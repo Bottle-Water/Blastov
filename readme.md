@@ -39,4 +39,14 @@ pip install -r requirements.txt
 python main.py
 ```
 
+
+
+open a daw and add a VST instrument to a track and select HarmonicGravity_Out as midi input on a track
+(recommended pluck-y sound with no sustain for arp demo, with big reverb effect) 
+
+
+click and drag to aim and fire satellite
+
+
+
 all game config vars in config file for best practice 
