@@ -19,7 +19,7 @@ python -m venv venv
 source venv/bin/activate
 ```
 
-#### then
+### then
 
 ```console
 uv pip install -r requirements.txt
