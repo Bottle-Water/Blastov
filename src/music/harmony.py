@@ -73,6 +73,9 @@ def get_planet_weights(sat: Satellite, planets: List[Planet]) -> Planet:
         total_weight += weight
 
     weights = [val/total_weight for val in weights]
+    threshold = 0.2
+    weights = [max((val * (1+threshold))-threshold, 0) for val in weights]
+    weights = [pow((val >= threshold)*val, 1/3) for val in weights]
     return weights
 
 def get_interval_velocities(planets: List[Planet], weights: List) -> List:
@@ -95,7 +98,7 @@ def get_interval_velocities(planets: List[Planet], weights: List) -> List:
                 velocities[interval] = max(velocities[interval], weights[i])
     
     # Sorry - I'm learning to use list comprehension lol 
-    velocities = [max(pow(vel, 2)-0.1, 0) for vel in velocities]
+    velocities = [pow(vel, 2) for vel in velocities]
     velocities = [int(vel * 127) for vel in velocities]
     return velocities
 
