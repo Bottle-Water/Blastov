@@ -88,7 +88,7 @@ def main():
         # Arpeggio rate based on satellite speed
         speed = np.linalg.norm(sat.vel)
         # Map speed (0-15) to arp interval (0.5s - 0.05s)
-        arp_interval = max(0.01, 0.1 - (speed / Config.MAX_SPEED) * 0.45)
+        arp_interval = max(0.03, 0.2 - (speed / Config.MAX_SPEED) * 0.45)
 
 
 
