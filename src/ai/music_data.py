@@ -3,13 +3,14 @@ from typing import Tuple, List
 
 CHORD_TYPES = [
     {"maj7":    (0, 4, 7, 11)},
+    {"minmaj7": (0, 3, 7, 11)},
     {"7":       (0, 4, 7, 10)},
     {"min7":    (0, 3, 7, 10)},
-    {"minmaj7": (0, 3, 7, 11)},
-    {"dim7":    (0, 3, 6, 9)}
+    {"majdim7":    (0, 4, 6, 9)},
+    {"dim7":    (0, 3, 6, 9)},
+    {"maj": {0, 4, 7}}
 ]
 
-@dataclass
 class ChordData:
     """
     Represents a chord.
@@ -19,16 +20,23 @@ class ChordData:
         root (int): The interval, 0-11, that represents the root
         intervals (Tuple[int, ...]): Intervals relative to the root
     """
-    name: str
-    root: int
-    intervals: Tuple[int, ...]
+    def __init__(self, root: int, chord_type: dict):   
+        self.root = root
+        self.intervals = list(list(chord_type.values())[0])
 
-SCALE_TYPES = {"Major": [0, 2, 4, 5, 7, 9, 11],}
 
-@dataclass
+SCALE_TYPES = {"Major": [0, 2, 4, 5, 7, 9, 11],
+               "Minor": [0, 2, 3, 5, 7, 8, 10]}
+
 class ScaleData:
-    root: int
-    intervals: Tuple[int, ...] #maybe replace with some representation of a mode 
+    def __init__(self, name):
+        self.name = name
+        mode_pos = 1
+        for i, c in enumerate(self.name):
+            if not c.isalnum():
+                mode_pos = i+1
+        self.root = note_to_int[self.name[:mode_pos]]
+        self.intervals = SCALE_TYPES[self.name[mode_pos:]]
 
 note_to_int={'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 
              'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11}

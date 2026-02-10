@@ -18,7 +18,7 @@ class FitnessEvaluator:
         
         weights = [weight / sum(weights) for weight in weights]
         #can try adding weights back in if it works in context
-        #score = sum([score * weight for score, weight in zip(chord_scores, weights)]) 
+        score = sum([score * weight for score, weight in zip(chord_scores, weights)]) 
         score = sum(chord_scores)/len(chromosome.planet_genes)
         return score
         
