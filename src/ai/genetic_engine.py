@@ -13,7 +13,7 @@ class GeneticSolarSystemGenerator:
                  population_size=60,
                  mutation_rate=0,
                  injection_prop = 0.5,
-                 random_immigration_prop = 0.01,
+                 random_immigration_prop = 0.03,
                  subpop_size = 10):
         
         self.system_size = system_size
@@ -40,22 +40,15 @@ class GeneticSolarSystemGenerator:
         best_fit_trend = []
         avg_fit_trend = []
         injections = []
-        inject = False
         subpop = []
+        plateau = []
 
         #Main generation loop
         while avg_fit < 0.825 and gen < max_gens:
-            best_fit, avg_fit, subpop = self._step(current_scale, subpop, inject)
+            inject = False
+            best_fit, avg_fit, subpop = self._step(current_scale, subpop)
             best_fit_trend.append(best_fit)
             avg_fit_trend.append(avg_fit) 
-            '''
-            if gen > 3 and avg_fit == avg_fit_trend[gen-2]:
-                inject = True
-                injections.append(gen)
-                subpop = []
-            else:
-                inject = False 
-            '''
 
             gen += 1
         
@@ -69,16 +62,11 @@ class GeneticSolarSystemGenerator:
     
     #Implements 'SORIGA' random immigration algorithm from here: 
     #https://link.springer.com/article/10.1007/s10710-007-9024-z
-    def _step(self, current_scale: ScaleData, subpop: List, inject: bool):
-        if inject:
-            subpop_size = 20
-        else:
-            subpop_size = self.subpop_size
-
+    def _step(self, current_scale: ScaleData, subpop: List):
         if not subpop:
             worst_idx = np.argsort([x[1] for x in self.population_with_fitness])[0]
-            start_idx = worst_idx + math.floor(-((subpop_size-1)/2))
-            stop_idx  = worst_idx + math.floor(((subpop_size-1)/2))
+            start_idx = worst_idx + math.floor(-((self.subpop_size-1)/2))
+            stop_idx  = worst_idx + math.floor(((self.subpop_size-1)/2))
             subpop = np.arange(start=start_idx, stop=stop_idx+1)
             subpop = [x % self.population_size for x in subpop]
             for i in subpop:
@@ -93,7 +81,6 @@ class GeneticSolarSystemGenerator:
         subpop_parents = subpop_fitnesses[-2:]
         # Reproduction (Crossover + Mutation)
         for i in range(self.population_size):
-            #At the moment, this actually makes it slightly worse lol 
             if i in subpop and i not in subpop_parents:
                 parent1 = self.population[choice(subpop_parents)]
                 parent2 = self.population[choice(subpop_parents)]
@@ -112,8 +99,11 @@ class GeneticSolarSystemGenerator:
                 child = self._mutate(child)
                 self.population[i] = child
             '''
+            
 
         #Random immigration - replace proportion with random newcomers
+        #(I hate to admit it but I think this is the thread holding everything 
+        #together lol)
         self.population = self._random_immigration(self.population)
 
         #Evaluate fitness for all
