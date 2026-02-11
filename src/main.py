@@ -6,7 +6,7 @@ from config import Config
 from physics.gravity import Planet, Satellite, calculate_gravity
 from physics.orbital_mechanics import predict_path
 from gui.renderer import Renderer
-from music.harmony import get_planet_chord_notes, get_dominant_planet, get_planet_weights, get_interval_velocities, get_notes
+from music.harmony import get_planet_chord_notes, get_dominant_planet
 from music.midi_output import MIDIHandler
 from ai.model import HarmonicLSTM
 
@@ -30,13 +30,13 @@ def main():
     system_center = np.array([Config.WINDOW_WIDTH // 2, Config.WINDOW_HEIGHT // 2])
 
     planets = [
-        Planet(pos=np.array([400, 360]), mass=10, chord_root=1, quality='maj7',
+        Planet(pos=np.array([400, 360]), mass=10, chord_root=1, quality='major',
                orbit_center=system_center, orbit_radius=130.0, angular_speed=0.18, angle=3.14),
-        Planet(pos=np.array([880, 360]), mass=10, chord_root=2, quality='maj7',
+        Planet(pos=np.array([880, 360]), mass=10, chord_root=5, quality='major',
                orbit_center=system_center, orbit_radius=240.0, angular_speed=-0.12, angle=0.0),
-        Planet(pos=np.array([640, 150]), mass=10, chord_root=4, quality='maj7',
+        Planet(pos=np.array([640, 150]), mass=10, chord_root=7, quality='minor',
                orbit_center=system_center, orbit_radius=210.0, angular_speed=0.4, angle=1.5),
-        Planet(pos=np.array([640, 150]), mass=10, chord_root=6, quality='dim7',
+        Planet(pos=np.array([640, 150]), mass=10, chord_root=6, quality='minor',
                orbit_center=system_center, orbit_radius=100.0, angular_speed=0.22, angle=2),
     ]
     sat = Satellite(np.array([100, 100]))
@@ -78,23 +78,23 @@ def main():
         sat.update()
 
         # Harmonic Context & MIDI Arpeggio
-        # Weight velocities of chromatic intervals by chords of planets
-        planet_weights = get_planet_weights(sat, planets)
-        interval_velocities = get_interval_velocities(planets, planet_weights)
-        notes = get_notes() # (just 12 chromatic notes + root)
+        # Get the dominant planet and use its chord
+        dominant_planet = get_dominant_planet(sat, planets)
+        chord_notes = get_planet_chord_notes(dominant_planet, base_octave=Config.BASE_OCTAVE)
+        source_planet = dominant_planet
         
 
         ## DEMO TO BE REPLACED BY AI MODEL INFERENCE ##
         # Arpeggio rate based on satellite speed
         speed = np.linalg.norm(sat.vel)
         # Map speed (0-15) to arp interval (0.5s - 0.05s)
-        arp_interval = max(0.03, 0.2 - (speed / Config.MAX_SPEED) * 0.45)
+        arp_interval = max(0.05, 0.5 - (speed / Config.MAX_SPEED) * 0.45)
+        
 
 
-
-        if not sat.frozen and len(notes) > 0 and (current_time - last_arp_time) > arp_interval:
-            note = notes[arp_index % len(notes)]
-            velocity = min(127, interval_velocities[(note - notes[0])])
+        if not sat.frozen and len(chord_notes) > 0 and (current_time - last_arp_time) > arp_interval:
+            note = chord_notes[arp_index % len(chord_notes)]
+            velocity = min(127, int(40 + speed * 5))  # Velocity scales with speed
             midi.send_note(note, velocity, duration=arp_interval * 0.8, current_time=current_time)
             current_note = note
             arp_index += 1
