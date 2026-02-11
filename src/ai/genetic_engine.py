@@ -11,7 +11,7 @@ import math
 class GeneticSolarSystemGenerator:
     def __init__(self, system_size=5,
                  population_size=60,
-                 mutation_rate=0,
+                 mutation_rate=0.01,
                  injection_prop = 0.5,
                  random_immigration_prop = 0.03,
                  subpop_size = 10):
@@ -81,10 +81,12 @@ class GeneticSolarSystemGenerator:
         subpop_parents = subpop_fitnesses[-2:]
         # Reproduction (Crossover + Mutation)
         for i in range(self.population_size):
+            
             if i in subpop and i not in subpop_parents:
                 parent1 = self.population[choice(subpop_parents)]
                 parent2 = self.population[choice(subpop_parents)]
                 child = self._crossover(parent1, parent2)
+                child = self._mutate(child)
                 self.population[i] = child
             elif i not in parents:
                 parent1 = self.population[choice(parents)]
@@ -147,13 +149,8 @@ class GeneticSolarSystemGenerator:
         """Mutate a chromosome by randomly changing some genes"""
 
         for gene in chrom.planet_genes:
-            for i, note in enumerate(gene.chord.intervals[1:]):
-                mutate_chance = random()
-                #Either shift a note up or down at rando 
-                if (self.mutation_rate/2) < mutate_chance < self.mutation_rate:
-                    gene.chord.intervals[i+1] = (note + 1) % 12
-                elif mutate_chance < (self.mutation_rate/2):
-                    gene.chord.intervals[i+1] = (note - 1) % 12
+            if random() < self.mutation_rate:
+                gene.chord.root = (gene.chord.root + 1) % 12 
         
         return chrom
 
