@@ -22,10 +22,10 @@ class Renderer:
             if getattr(p, "orbit_center", None) is not None and getattr(p, "orbit_radius", 0) > 1:
                 pygame.draw.circle(self.screen, (40, 40, 60), p.orbit_center.astype(int), int(p.orbit_radius), 1)
 
-            color = (200, 100, 100) if p.quality == 'major' else (100, 100, 200)
+            color = (200, 100, 100) 
             pygame.draw.circle(self.screen, color, p.pos.astype(int), int(p.radius))
             # Label
-            label = self.font.render(f"Root: {p.chord_root}", True, (255, 255, 255))
+            label = self.font.render(p.chord.name, True, (255, 255, 255))
             self.screen.blit(label, (p.pos[0] - 20, p.pos[1] + p.radius + 5))
 
         # Draw Satellite as triangle pointing in velocity direction
@@ -63,7 +63,8 @@ class Renderer:
             pygame.draw.circle(self.screen, (150, 150, 150), point, 2)
     
     def draw_hud(self, sat: Satellite, planets: List[Planet], current_note: int = None, 
-                 source_planet: Planet = None, speed: float = 0.0):
+                 source_planet: Planet = None, speed: float = 0.0, ga_key_label: str = '', 
+                 ga_status: str = ''):
         """Draws HUD with MIDI output info and planet distances."""
         y_offset = 10
         line_height = 25
@@ -85,10 +86,7 @@ class Renderer:
             
             # Calculate actual chord root from key + scale degree
             from config import Config
-            from music.harmony import SCALE_DEGREE_TO_SEMITONE
-            semitone_offset = SCALE_DEGREE_TO_SEMITONE.get(source_planet.chord_root, 0)
-            actual_root = (Config.KEY + semitone_offset) % 12
-            chord_text = self.font.render(f"From: {note_names[actual_root]} {source_planet.quality}", True, (100, 255, 100))
+            chord_text = self.font.render(f"From: {source_planet.chord.name}", True, (100, 255, 100))
             self.screen.blit(chord_text, (10, y_offset))
             y_offset += line_height
         
@@ -99,13 +97,12 @@ class Renderer:
         y_offset += line_height
         
         note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-        from music.harmony import SCALE_DEGREE_TO_SEMITONE
         for i, p in enumerate(planets):
             dist = np.linalg.norm(p.pos - sat.pos)
             from config import Config
-            semitone_offset = SCALE_DEGREE_TO_SEMITONE.get(p.chord_root, 0)
-            actual_root = (Config.KEY + semitone_offset) % 12
-            chord_name = f"{note_names[actual_root]} {p.quality}"
-            dist_text = self.font.render(f"  {chord_name}: {dist:.1f}px", True, (180, 180, 180))
+            dist_text = self.font.render(f"  {p.chord.name}: {dist:.1f}px", True, (180, 180, 180))
             self.screen.blit(dist_text, (10, y_offset))
             y_offset += line_height
+
+        dist_text = self.font.render(f"{ga_key_label}: {ga_status}", True, (180, 180, 180))
+        self.screen.blit(dist_text, (10, 670))

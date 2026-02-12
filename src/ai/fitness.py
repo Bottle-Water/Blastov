@@ -1,5 +1,5 @@
-from utils import PlanetGene, SolarSystemChromosome
-from music_data import ChordData, ScaleData
+from ai.utils import SolarSystemChromosome
+from music.harmony import ScaleData
 
 class FitnessEvaluator:
     def evaluate(self, chromosome: SolarSystemChromosome,

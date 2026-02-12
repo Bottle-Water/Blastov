@@ -3,12 +3,16 @@ import numpy as np
 import torch
 import time
 from config import Config
-from physics.gravity import Planet, Satellite, calculate_gravity
+import threading
+from random import randrange
+from queue import Queue
+from physics.gravity import Planet, Satellite, calculate_gravity, get_dominant_planet
 from physics.orbital_mechanics import predict_path
 from gui.renderer import Renderer
-from music.harmony import get_planet_chord_notes, get_dominant_planet
 from music.midi_output import MIDIHandler
 from ai.model import HarmonicLSTM
+from music.harmony import CHORD_TYPES, ChordData, ScaleData, int_to_note
+from genetic_engine import GeneticSolarSystemGenerator
 
 def main():
     pygame.init()
@@ -18,6 +22,7 @@ def main():
     screen = pygame.display.set_mode((Config.WINDOW_WIDTH, Config.WINDOW_HEIGHT))
     clock = pygame.time.Clock()
     renderer = Renderer(screen)
+
     
     # MIDI Handler
     midi = MIDIHandler(Config.MIDI_PORT_NAME)
@@ -28,28 +33,42 @@ def main():
 
     # Initialize World
     system_center = np.array([Config.WINDOW_WIDTH // 2, Config.WINDOW_HEIGHT // 2])
-
     planets = [
-        Planet(pos=np.array([400, 360]), mass=10, chord_root=1, quality='major',
+        Planet(pos=np.array([400, 360]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=130.0, angular_speed=0.18, angle=3.14),
-        Planet(pos=np.array([880, 360]), mass=10, chord_root=5, quality='major',
+        Planet(pos=np.array([880, 360]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=240.0, angular_speed=-0.12, angle=0.0),
-        Planet(pos=np.array([640, 150]), mass=10, chord_root=7, quality='minor',
+        Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=210.0, angular_speed=0.4, angle=1.5),
-        Planet(pos=np.array([640, 150]), mass=10, chord_root=6, quality='minor',
+        Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=100.0, angular_speed=0.22, angle=2),
     ]
     sat = Satellite(np.array([100, 100]))
 
+    # Genetic algorithm and thread state
+    ga_timer = 0
+    ga_rate = 2.0
+    ga_delta = 1/ga_rate
+    ga_queue = Queue()
+    ga_active = False
+    ga_thread = None
+    ga_key_label = ''
+    ga_status = ''
+    current_scale = ScaleData("CMajor")
+    previous_scale = None
+    generator = GeneticSolarSystemGenerator()
 
-    
-    # AI Model
-    model = HarmonicLSTM()
-    model.eval()
+    def run_ga(generator, current_scale):
+        chrom, resolved = generator.run(current_scale)
+        steps = generator.current_scale_steps
+        ga_queue.put({'chromosome': chrom, 'resolved': resolved,
+                      'steps': steps})
+        time.sleep(0.1)
 
     running = True
     while running:
         current_time = time.time()
+        ga_timer += dt
         
         # Event Handling
         for event in pygame.event.get():
@@ -69,6 +88,37 @@ def main():
                 sat.acc = np.zeros(2)
                 sat.vel = launch_vector
 
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    previous_scale = current_scale.name
+                    root = randrange(12)
+                    new_scale = int_to_note[root] + 'Major'
+                    ga_key_label = f"{previous_scale}->{new_scale}"
+                    current_scale = ScaleData(new_scale)
+                    ga_active = True
+
+        if ga_active and ga_timer >= ga_delta:
+            ga_thread = threading.Thread(
+                target=run_ga,
+                args=(generator, current_scale,),
+                daemon=True
+            )
+            ga_thread.start()
+            ga_active = True
+            ga_timer = 0
+
+        if ga_active and not ga_queue.empty():
+            ga_result = ga_queue.get()
+
+            if generator.current_scale_steps > generator.max_gens:
+                ga_status = "Didn't resolve"
+                ga_active = False
+            elif ga_result['resolved']:
+                ga_status = 'Resolved'
+                ga_active = False
+            else:
+                ga_status = f"{ga_result["steps"]} steps"
+
         for p in planets:
             p.update(dt)
 
@@ -80,7 +130,7 @@ def main():
         # Harmonic Context & MIDI Arpeggio
         # Get the dominant planet and use its chord
         dominant_planet = get_dominant_planet(sat, planets)
-        chord_notes = get_planet_chord_notes(dominant_planet, base_octave=Config.BASE_OCTAVE)
+        chord_notes = sorted([interval + dominant_planet.chord.root for interval in dominant_planet.chord.intervals])
         source_planet = dominant_planet
         
 
@@ -111,7 +161,7 @@ def main():
         
         # 4. Rendering
         renderer.draw_world(sat, planets)
-        renderer.draw_hud(sat, planets, current_note, source_planet, speed)
+        renderer.draw_hud(sat, planets, current_note, source_planet, speed, ga_key_label, ga_status)
 
         if is_dragging:
             current_mouse = pygame.mouse.get_pos()
@@ -124,6 +174,7 @@ def main():
 
     midi.panic()
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()

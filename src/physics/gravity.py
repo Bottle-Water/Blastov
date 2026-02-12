@@ -2,13 +2,15 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import List, Tuple
 from config import Config
+from music.harmony import ChordData
 
 @dataclass
 class Planet:
     pos: np.ndarray  # [x, y]
     mass: float
-    chord_root: int  # 0-11
-    quality: str  # 'major', 'minor', 'dim'
+    #chord_root: int  # 0-11
+    #quality: str  # 'major', 'minor', 'dim'
+    chord: ChordData
     radius: float = 30.0
     # Orbit parameters (optional)
     orbit_center: np.ndarray = None
@@ -66,3 +68,15 @@ def calculate_gravity(sat: Satellite, planets: List[Planet]) -> np.ndarray:
         force_mag = (Config.G * p.mass) / (dist ** 2)
         total_force += (diff / dist) * force_mag
     return total_force
+
+def get_dominant_planet(sat: Satellite, planets: List[Planet]) -> Planet:
+    """Returns the planet with the strongest gravitational influence on the satellite."""
+    max_weight = 0
+    dominant = planets[0]
+    for p in planets:
+        dist = np.linalg.norm(p.pos - sat.pos)
+        weight = p.mass / (dist + 1.0)
+        if weight > max_weight:
+            max_weight = weight
+            dominant = p
+    return dominant

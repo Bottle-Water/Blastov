@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Tuple, List
-from music_data import ChordData
+from music.harmony import ChordData
 
 @dataclass
 class PlanetGene:

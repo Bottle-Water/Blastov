@@ -1,6 +1,6 @@
-from music_data import CHORD_TYPES, SCALE_TYPES, int_to_note, ChordData, ScaleData
-from utils import PlanetGene, SolarSystemChromosome
-from fitness import FitnessEvaluator
+from music.harmony import CHORD_TYPES, SCALE_TYPES, int_to_note, ChordData, ScaleData
+from ai.utils import PlanetGene, SolarSystemChromosome
+from ai.fitness import FitnessEvaluator
 from dataclasses import dataclass
 from typing import Tuple, List
 from random import randrange, choice, random
@@ -10,18 +10,23 @@ import math
 
 class GeneticSolarSystemGenerator:
     def __init__(self, system_size=5,
+                 max_gens = 30,
                  population_size=60,
+                 threshold = 0.825,
                  mutation_rate=0.01,
                  injection_prop = 0.5,
-                 random_immigration_prop = 0.03,
+                 random_immigration_prop = 0.05,
                  subpop_size = 10):
         
         self.system_size = system_size
+        self.max_gens = max_gens
         self.population_size = population_size
+        self.threshold = threshold
         self.mutation_rate = mutation_rate
         self.injection_prop = injection_prop
         self.random_immigration_prop = random_immigration_prop
         self.subpop_size = subpop_size
+        self.subpop = []
 
         #Initialise random population
         self.population = []
@@ -31,77 +36,65 @@ class GeneticSolarSystemGenerator:
         self.population_with_fitness = [(chrom, 0) for chrom in self.population]
 
         self.fitness_evaluator = FitnessEvaluator()
+        self.current_scale_steps = 0
+        self.previous_scale = None
+    
+    def run(self, current_scale: ScaleData) -> SolarSystemChromosome:
+        resolved = False
+        queen, stats = self._step(current_scale)
         
+        if self.previous_scale and current_scale.name == self.previous_scale.name:
+            self.current_scale_steps += 1
+        else:
+            self.current_scale_steps = 1
 
-    def run(self, max_gens, current_scale: ScaleData):
-        gen = 0
-        avg_fit = 0
-
-        best_fit_trend = []
-        avg_fit_trend = []
-        injections = []
-        subpop = []
-        plateau = []
-
-        #Main generation loop
-        while avg_fit < 0.825 and gen < max_gens:
-            inject = False
-            best_fit, avg_fit, subpop = self._step(current_scale, subpop)
-            best_fit_trend.append(best_fit)
-            avg_fit_trend.append(avg_fit) 
-
-            gen += 1
+        if stats["Avg fit"] > self.threshold or self.current_scale_steps == self.max_gens:
+            resolved = True
         
-        resolved = False if gen == max_gens else True
-        stats = {"Length": gen, "Injections": {"Number": len(injections)}, "Resolved": resolved, 
-                 "Trends": {"Avg": avg_fit_trend, "Best": best_fit_trend}}
-
-        if len(injections) != 0:
-            stats["Injections"]["Locations"] = injections
-        return stats
+        self.previous_scale = current_scale
+        return queen, resolved
     
     #Implements 'SORIGA' random immigration algorithm from here: 
     #https://link.springer.com/article/10.1007/s10710-007-9024-z
-    def _step(self, current_scale: ScaleData, subpop: List):
-        if not subpop:
+    def _step(self, current_scale: ScaleData):
+        queen_idx = 0
+        
+        if not self.subpop:
             worst_idx = np.argsort([x[1] for x in self.population_with_fitness])[0]
             start_idx = worst_idx + math.floor(-((self.subpop_size-1)/2))
             stop_idx  = worst_idx + math.floor(((self.subpop_size-1)/2))
-            subpop = np.arange(start=start_idx, stop=stop_idx+1)
-            subpop = [x % self.population_size for x in subpop]
-            for i in subpop:
+            self.subpop = np.arange(start=start_idx, stop=stop_idx+1)
+            self.subpop = [x % self.population_size for x in self.subpop]
+            for i in self.subpop:
                 self.population[i] = self.create_random_chromosome()
 
         #Selection - top 20%
         fitnesses = np.argsort([x[1] for x in self.population_with_fitness])
-        superpop_fitnesses = [x for x in fitnesses if x not in subpop]
+        superpop_fitnesses = [x for x in fitnesses if x not in self.subpop]
+        superpop_fitnesses = list(filter(lambda a: a != queen_idx, superpop_fitnesses))
         parents = superpop_fitnesses[int(-0.2*self.population_size):]
-        subpop_fitnesses = [x for x in fitnesses if x in subpop]
+        subpop_fitnesses = [x for x in fitnesses if x in self.subpop]
+        superpop_fitnesses = list(filter(lambda a: a != queen_idx, subpop_fitnesses))
         #At the moment, we just choose the top 3 subpop as parents
         subpop_parents = subpop_fitnesses[-2:]
         # Reproduction (Crossover + Mutation)
         for i in range(self.population_size):
-            
-            if i in subpop and i not in subpop_parents:
+            if i == queen_idx:
+                king = self.population[choice(subpop_parents)]
+                princess = self._crossover(self.population[queen_idx], king)
+                self.population[i] = princess
+            elif i in self.subpop and i not in subpop_parents:
                 parent1 = self.population[choice(subpop_parents)]
                 parent2 = self.population[choice(subpop_parents)]
                 child = self._crossover(parent1, parent2)
-                child = self._mutate(child)
+                #child = self._mutate(child)
                 self.population[i] = child
             elif i not in parents:
                 parent1 = self.population[choice(parents)]
                 parent2 = self.population[choice(parents)]
                 child = self._crossover(parent1, parent2)
                 self.population[i] = child
-            '''
-            if i not in parents:
-                parent1 = self.population[choice(parents)]
-                parent2 = self.population[choice(parents)]
-                child = self._crossover(parent1, parent2)
-                child = self._mutate(child)
-                self.population[i] = child
-            '''
-            
+
 
         #Random immigration - replace proportion with random newcomers
         #(I hate to admit it but I think this is the thread holding everything 
@@ -115,12 +108,12 @@ class GeneticSolarSystemGenerator:
 
         best_fit = sorted(self.population_with_fitness, key=lambda x: x[1], reverse=True)[0][1]
         worst_idx = min(range(len(fitnesses)), key=fitnesses.__getitem__)
-        if worst_idx not in subpop:
-            subpop = []
+        if worst_idx not in self.subpop:
+            self.subpop = []
 
         avg_fit = sum(fitnesses) / len(fitnesses)
 
-        return (best_fit, avg_fit, subpop) 
+        return self.population[queen_idx], {"Best fit": best_fit, "Avg fit": avg_fit}
     
     def create_random_chromosome(self) -> SolarSystemChromosome:
         planet_genes = []        
@@ -167,22 +160,37 @@ class GeneticSolarSystemGenerator:
                           current_scale: ScaleData) -> float:
         return self.fitness_evaluator.evaluate(chrom, current_scale)
 
-
-
-def main():
+def stats():
     scales = [ScaleData("CMajor"),
               ScaleData("GMajor"),
               ScaleData("FMinor"),
               ScaleData("BMajor")]
     max_runs = 100
-    max_steps = 50
     stats = []
 
     for _ in range(max_runs):
         generator = GeneticSolarSystemGenerator()
         run_stats = []
         for current_scale in scales:
-            run_stats.append(generator.run(max_steps, current_scale))
+            gen = 0
+            avg_fit = 0
+
+            best_fit_trend = []
+            avg_fit_trend = []
+
+            #Main generation loop
+            while avg_fit < generator.threshold and gen < generator.max_gens:
+                _, step_stats = generator._step(current_scale)
+                avg_fit = step_stats["Avg fit"]
+                best_fit_trend.append(step_stats["Best fit"])
+                avg_fit_trend.append(avg_fit) 
+                
+                gen += 1
+            
+            resolved = False if gen == generator.max_gens else True
+            new_stats = {"Length": gen, "Resolved": resolved, 
+                    "Trends": {"Avg": avg_fit_trend, "Best": best_fit_trend}}
+            run_stats.append(new_stats)
         stats.append(run_stats)
 
     plt.figure(1, figsize=(12, 6))
@@ -192,10 +200,7 @@ def main():
         scale_stats = [run[i] for run in stats]
         avg_len = 0
         max_len = 0
-        injected = 0
         unresolved = 0
-        avg_injections = 0
-        avg_injection_site = 0
 
         for j, entry in enumerate(scale_stats):
             if j < 4:
@@ -203,38 +208,48 @@ def main():
                 plt.title(current_scale.name)
                 plt.plot(np.arange(entry["Length"]), entry["Trends"]["Best"], label='Best', color='red')
                 plt.plot(np.arange(entry["Length"]), entry["Trends"]["Avg"], label='Avg', color='blue')
-                plt.xlim(0, max_steps)
+                plt.xlim(0, generator.max_gens)
                 plt.ylim(0, 1)
                 plt.legend()
-                if entry["Injections"]["Number"] > 0:
-                    plt.vlines(entry["Injections"]["Locations"], 0, 1)
                 
 
             avg_len += entry["Length"]
             if entry["Length"] > max_len: max_len = entry["Length"]
-            if entry["Injections"]["Number"] > 0: 
-                injected += 1
-                avg_injections += entry["Injections"]["Number"]
-                avg_injection_site += (entry["Injections"]["Locations"][0] + 1)
             unresolved += (entry["Resolved"] != True)
 
         avg_len /= max_runs
-        
 
         print(f"{previous_scale}->{current_scale.name}")
         print(f"Avg length: {avg_len}, max len: {max_len}.")
-        if injected:
-            avg_injections /= injected
-            avg_injection_site /= injected
-            print(f"{injected} needed on average {avg_injections:.2f} injections after {avg_injection_site:.2f} steps.")
-        else:
-            print(f"0 needed injections.")
-
         print(f"{unresolved} didn't resolve.")
         previous_scale = current_scale.name
     
     plt.tight_layout()
     plt.show()
+
+def main():
+    generator = GeneticSolarSystemGenerator()
+    scales = [ScaleData("CMajor"),
+            ScaleData("GMajor"),
+            ScaleData("FMinor"),
+            ScaleData("BMajor")]
+    
+    for i in range(100):
+        current_scale = scales[(i%len(scales))]
+        print(f"Scale: {current_scale.name}")
+        resolved = False
+
+        while not resolved:
+            _, resolved = generator.run(current_scale)
+        
+        if generator.current_scale_steps == generator.max_gens:
+            print("Didn't resolve!")
+        else:
+            print(f"Resolved in {generator.current_scale_steps} gens.")
+
+
+
+
 
 if __name__ == "__main__":
     main()

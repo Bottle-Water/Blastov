@@ -1,106 +1,54 @@
 import numpy as np
 from typing import List, Dict
-from physics.gravity import Planet, Satellite
 from config import Config
 
-# Chord intervals from root: root, 3rd, 5th, octave
-CHORD_INTERVALS = {
-    'major': [0, 4, 7, 12],      # Major triad + octave
-    'minor': [0, 3, 7, 12],      # Minor triad + octave
-    'dim': [0, 3, 6, 12],        # Diminished triad + octave
-    'dom7': [0, 4, 7, 10],       # Dominant 7th
-    'maj7': [0, 4, 7, 11],       # Major 7th
-    'min7': [0, 3, 7, 10],       # Minor 7th 
-    'dim7': [0, 3, 6, 9]         # Diminished chord
-}
+CHORD_TYPES = [
+    {"maj7":    (0, 4, 7, 11)},
+    {"minmaj7": (0, 3, 7, 11)},
+    {"7":       (0, 4, 7, 10)},
+    {"min7":    (0, 3, 7, 10)},
+    {"dim7":    (0, 3, 6, 9)},
+    {"maj9":    (0, 2, 4, 7, 11)},
+    {"maj7#11": (0, 4, 6, 7, 11)},
+    {"min7add4": (0, 3, 5, 7, 10)}
+]
 
-# Scale degree (1-7) to semitone offset in major scale
-# By changing this we can do non diatonic chords if wanted
-SCALE_DEGREE_TO_SEMITONE = {
-    1: 0,   # I   - C
-    2: 2,   # ii  - D
-    3: 4,   # iii - E
-    4: 5,   # IV  - F
-    5: 7,   # V   - G
-    6: 9,   # vi  - A
-    7: 11,  # vii - B
-}
-
-def get_planet_chord_notes(planet: Planet, base_octave: int = 4) -> List[int]:
-    """Returns MIDI note numbers for a specific planet's chord.
-    
-    The chord is built from:
-    - KEY from config (e.g., C = 0)
-    - chord_root as scale degree (1=I, 2=ii, 3=iii, 4=IV, 5=V, 6=vi, 7=vii)
-    - quality (major, minor, dim, dom7)
+class ChordData:
     """
-    # Convert scale degree to semitone offset, then add KEY
-    semitone_offset = SCALE_DEGREE_TO_SEMITONE.get(planet.chord_root, 0)
-    root_note = (Config.KEY + semitone_offset) % 12
-    
-    # Get chord intervals based on quality
-    intervals = CHORD_INTERVALS.get(planet.quality, CHORD_INTERVALS['major']) # maj as default
-    
-    # Build chord notes
-    notes = []
-    for interval in intervals:
-        pitch_class = (root_note + interval) % 12
-        midi_note = base_octave * 12 + pitch_class
-        notes.append(midi_note)
-    
-    return sorted(notes)
+    Represents a chord.
 
-def get_dominant_planet(sat: Satellite, planets: List[Planet]) -> Planet:
-    """Returns the planet with the strongest gravitational influence on the satellite."""
-    max_weight = 0
-    dominant = planets[0]
-    for p in planets:
-        dist = np.linalg.norm(p.pos - sat.pos)
-        weight = p.mass / (dist + 1.0)
-        if weight > max_weight:
-            max_weight = weight
-            dominant = p
-    return dominant
+    Attributes:
+        name (str): The chord symbol (e.g. "Dm7")
+        root (int): The interval, 0-11, that represents the root
+        intervals (Tuple[int, ...]): Intervals relative to the root
+    """
+    def __init__(self, root: int, chord_type: dict):   
+        self.root = root
+        self.intervals = list(list(chord_type.values())[0])
+        self.flavour = list(chord_type.keys())[0]
+        self.name = int_to_note[self.root] + self.flavour
 
-def get_planet_weights(sat: Satellite, planets: List[Planet]) -> Planet:
-    """Returns a list of weights of all planets, normalised to 0-1"""
-    weights = []
-    total_weight = 0
-    for p in planets:
-        dist = np.linalg.norm(p.pos - sat.pos)
-        weight = p.mass / (dist + 1.0)
-        weights.append(weight)
-        total_weight += weight
+    def update_name(self):
+        self.name = int_to_note[self.root] + self.flavour
 
-    weights = [val/total_weight for val in weights]
-    threshold = 0.2
-    weights = [max((val * (1+threshold))-threshold, 0) for val in weights]
-    weights = [pow((val >= threshold)*val, 1/3) for val in weights]
-    return weights
+SCALE_TYPES = {"Major": [0, 2, 4, 5, 7, 9, 11],
+               "Minor": [0, 2, 3, 5, 7, 8, 10]}
 
-def get_interval_velocities(planets: List[Planet], weights: List) -> List:
-    velocities = np.zeros(12)
+class ScaleData:
+    def __init__(self, name):
+        self.name = name
+        mode_pos = 1
+        for i, c in enumerate(self.name):
+            if not c.isalnum():
+                mode_pos = i+1
+        self.root = note_to_int[self.name[:mode_pos]]
+        self.intervals = SCALE_TYPES[self.name[mode_pos:]]
 
-    # It feels wrong to have weights and planets linked by index and nothing
-    # else! But idk a better way
-    for i, p in enumerate(planets):
-        # Also this is copied from that function up there! I guess this can 
-        # be rearranged
-        semitone_offset = SCALE_DEGREE_TO_SEMITONE.get(p.chord_root, 0)
-        root_note = (Config.KEY + semitone_offset) % 12
-        intervals = CHORD_INTERVALS.get(p.quality, CHORD_INTERVALS['major']) # maj as default
-        intervals = [(root_note + interval) % 12 for interval in intervals]
-        
-        for interval in intervals:
-            if velocities[interval] == 0:
-                velocities[interval] = weights[i]
-            else:
-                velocities[interval] = max(velocities[interval], weights[i])
-    
-    # Sorry - I'm learning to use list comprehension lol 
-    velocities = [pow(vel, 2) for vel in velocities]
-    velocities = [int(vel * 127) for vel in velocities]
-    return velocities
+note_to_int={'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 
+             'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11}
+int_to_note={0: 'C', 1: 'C#', 2: 'D', 3: 'D#', 4: 'E', 5: 'F', 6: 'F#',
+             7: 'G', 8: 'G#', 9: 'A', 10: 'A#', 11: 'B'}
+
 
 def get_notes() -> List:
     """
