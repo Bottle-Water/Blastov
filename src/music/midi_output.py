@@ -1,7 +1,4 @@
 import mido
-import time
-from typing import Optional, List
-from collections import deque
 
 class MIDIHandler:
     def __init__(self, port_name: str):

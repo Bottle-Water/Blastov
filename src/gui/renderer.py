@@ -84,8 +84,6 @@ class Renderer:
             self.screen.blit(midi_text, (10, y_offset))
             y_offset += line_height
             
-            # Calculate actual chord root from key + scale degree
-            from config import Config
             chord_text = self.font.render(f"From: {source_planet.chord.name}", True, (100, 255, 100))
             self.screen.blit(chord_text, (10, y_offset))
             y_offset += line_height
@@ -96,13 +94,12 @@ class Renderer:
         self.screen.blit(dist_header, (10, y_offset))
         y_offset += line_height
         
-        note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         for i, p in enumerate(planets):
             dist = np.linalg.norm(p.pos - sat.pos)
-            from config import Config
             dist_text = self.font.render(f"  {p.chord.name}: {dist:.1f}px", True, (180, 180, 180))
             self.screen.blit(dist_text, (10, y_offset))
             y_offset += line_height
 
+        # Displays genetic algorithm status
         dist_text = self.font.render(f"{ga_key_label}: {ga_status}", True, (180, 180, 180))
         self.screen.blit(dist_text, (10, 670))

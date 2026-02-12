@@ -1,17 +1,13 @@
 import pygame
 import numpy as np
-import torch
 import time
 from config import Config
 import threading
-import sys
-from random import randrange
 from queue import Queue
 from physics.gravity import Planet, Satellite, calculate_gravity, get_dominant_planet
 from physics.orbital_mechanics import predict_path
 from gui.renderer import Renderer
 from music.midi_output import MIDIHandler
-from ai.model import HarmonicLSTM
 from music.harmony import CHORD_TYPES, ChordData, ScaleData, int_to_note, note_to_int
 from genetic_engine import GeneticSolarSystemGenerator
 
@@ -32,7 +28,7 @@ def main():
     current_note = None
     source_planet = None
 
-    # Initialize World
+    # Initialize solar system
     system_center = np.array([Config.WINDOW_WIDTH // 2, Config.WINDOW_HEIGHT // 2])
     planets = [
         Planet(pos=np.array([400, 360]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
@@ -49,6 +45,11 @@ def main():
     sat = Satellite(np.array([100, 100]))
 
     # Genetic algorithm and thread state
+    """
+    The genetic algorithm is run step-by-step, rather than running until completion
+    in a batch. This way, we can show the evolutionary process of the algorithm as it 
+    shifts keys. 
+    """
     ga_timer = 0
     ga_rate = 8.0
     ga_delta = 1/ga_rate
@@ -59,7 +60,7 @@ def main():
     ga_status = ''
     current_scale = ScaleData("CMajor")
     previous_scale = None
-    generator = GeneticSolarSystemGenerator(system_size=len(planets))
+    generator = GeneticSolarSystemGenerator(number_of_planets=len(planets))
 
     def run_ga(generator, current_scale):
         chrom, resolved = generator.run(current_scale)
@@ -93,14 +94,18 @@ def main():
 
             if event.type == pygame.KEYDOWN:
                 keys = pygame.key.get_pressed()
+                #When note name key pressed, change to that key.
                 if event.unicode in ['a','b', 'c', 'd', 'e', 'f', 'g']:
                     previous_scale = current_scale.name
                     root = event.unicode.upper()
                     flavour = 'Major'
+                    #Holding the up or down key at the same time makes it 
+                    #sharp or flat. 
                     if keys[pygame.K_UP]:
                         root = int_to_note[(note_to_int[root]+1)%12]
                     if keys[pygame.K_DOWN]:
                         root = int_to_note[(note_to_int[root]-1)%12]
+                    #Holding left gets the minor key.
                     if keys[pygame.K_LEFT]:
                         flavour = 'Minor'
                     new_scale = root + flavour
@@ -108,6 +113,7 @@ def main():
                     current_scale = ScaleData(new_scale)
                     ga_active = True
 
+        #Get next chord state when the timer triggers. 
         if ga_active and ga_timer >= ga_delta:
             ga_thread = threading.Thread(
                 target=run_ga,
@@ -118,10 +124,10 @@ def main():
             ga_active = True
             ga_timer = 0
 
+        #Get ga result
         if ga_active and not ga_queue.empty():
             ga_result = ga_queue.get()
 
-            #This should be done in a smarter way to make it smoother 
             for i, gene in enumerate(ga_result["chromosome"].planet_genes):
                 planets[i].chord = gene.chord
 
@@ -148,15 +154,12 @@ def main():
         chord_notes = sorted([interval + dominant_planet.chord.root + (Config.BASE_OCTAVE * 12) for interval in dominant_planet.chord.intervals])
         source_planet = dominant_planet
         
-
-        ## DEMO TO BE REPLACED BY AI MODEL INFERENCE ##
         # Arpeggio rate based on satellite speed
         speed = np.linalg.norm(sat.vel)
         # Map speed (0-15) to arp interval (0.5s - 0.05s)
         arp_interval = max(0.025, 0.25 - (speed / Config.MAX_SPEED) * 0.45)
         
-
-
+        #Iterate through the arpeggio 
         if not sat.frozen and len(chord_notes) > 0 and (current_time - last_arp_time) > arp_interval:
             note = chord_notes[arp_index % len(chord_notes)]
             velocity = min(127, int(40 + speed * 5))  # Velocity scales with speed
@@ -166,7 +169,6 @@ def main():
             last_arp_time = current_time
         
 
-
         # Clear current note if enough time has passed since last note
         if current_time - last_arp_time > arp_interval:
             current_note = None
@@ -174,7 +176,7 @@ def main():
         # Update MIDI (turn off expired notes)
         midi.update(current_time)
         
-        # 4. Rendering
+        # Rendering
         renderer.draw_world(sat, planets)
         renderer.draw_hud(sat, planets, current_note, source_planet, speed, ga_key_label, ga_status)
 

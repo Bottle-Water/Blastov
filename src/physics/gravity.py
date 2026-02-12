@@ -1,6 +1,6 @@
 import numpy as np
-from dataclasses import dataclass, field
-from typing import List, Tuple
+from dataclasses import dataclass
+from typing import List
 from config import Config
 from music.harmony import ChordData
 
@@ -8,8 +8,6 @@ from music.harmony import ChordData
 class Planet:
     pos: np.ndarray  # [x, y]
     mass: float
-    #chord_root: int  # 0-11
-    #quality: str  # 'major', 'minor', 'dim'
     chord: ChordData
     radius: float = 30.0
     # Orbit parameters (optional)
@@ -19,13 +17,24 @@ class Planet:
     angle: float = 0.0
 
     def update(self, dt: float = 1.0 / Config.FPS):
-        """Advance planet along circular orbit if parameters are set."""
+        """
+        Advance planet along circular orbit if parameters are set.
+        
+        Arguments:
+            dt (float): Time step (default 1/60 seconds)
+        """
         if self.orbit_center is None or self.orbit_radius == 0.0 or self.angular_speed == 0.0:
             return
         self.angle += self.angular_speed * dt
         self.pos = self.orbit_center + np.array([np.cos(self.angle), np.sin(self.angle)]) * self.orbit_radius
 
 class Satellite:
+    """
+    Defines the parameters of the rocket. 
+
+    Arguments:
+        pos (array): (x, y) position on the screen. 
+    """
     def __init__(self, pos: np.ndarray):
         self.pos = pos.astype(float)
         self.vel = np.zeros(2, dtype=float)
@@ -54,6 +63,7 @@ class Satellite:
                 self.history.pop(0)
 
     def freeze(self):
+        """Hold the sattelite still while new trajectory being defined."""
         self.vel = np.zeros(2, dtype=float)
         self.acc = np.zeros(2, dtype=float)
         self.frozen = True
