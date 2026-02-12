@@ -24,28 +24,29 @@ class MIDIHandler:
         if not self.out_port:
             return
         notes_to_remove = []
-        for note, off_time in self.active_notes.items():
+        for key, off_time in self.active_notes.items(): #key is (note, channel)
             if current_time >= off_time:
-                msg_off = mido.Message('note_off', note=note, velocity=0)
+                note, channel = key
+                msg_off = mido.Message('note_off', note=note, velocity=0, channel=channel)
                 self.out_port.send(msg_off)
-                notes_to_remove.append(note)
-        for note in notes_to_remove:
-            del self.active_notes[note]
+                notes_to_remove.append(key)
+        for key in notes_to_remove:
+            del self.active_notes[key]
 
-    def send_note(self, note: int, velocity: int, duration: float, current_time: float):
+    def send_note(self, note: int, velocity: int, duration: float, current_time: float, channel: int):
         """Sends a note_on and schedules note_off."""
         if not self.out_port:
             return
-        msg_on = mido.Message('note_on', note=note, velocity=velocity)
+        msg_on = mido.Message('note_on', note=note, velocity=velocity, channel=channel)
         self.out_port.send(msg_on)
-        self.active_notes[note] = current_time + duration
+        self.active_notes[(note, channel)] = current_time + duration
 
     def panic(self):
         """Turn off all notes immediately."""
         if not self.out_port:
             return
-        for note in list(self.active_notes.keys()):
-            msg_off = mido.Message('note_off', note=note, velocity=0)
+        for (note, channel) in list(self.active_notes.keys()):
+            msg_off = mido.Message('note_off', note=note, velocity=0, channel=channel)
             self.out_port.send(msg_off)
         self.active_notes.clear()
         self.out_port.reset()

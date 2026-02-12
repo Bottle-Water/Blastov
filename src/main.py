@@ -14,7 +14,8 @@ from music.midi_output import MIDIHandler
 from ai.model import HarmonicLSTM
 from music.harmony import CHORD_TYPES, ChordData, ScaleData, int_to_note, note_to_int
 from genetic_engine import GeneticSolarSystemGenerator
-
+from markov.train_examples import track_1, track_2, track_3, track_4, track_5
+from markov.MarkovChainMelodyGenerator import MarkovChainMelodyGenerator 
 def main():
     pygame.init()
     is_dragging = False
@@ -26,7 +27,8 @@ def main():
 
     
     # MIDI Handler
-    midi = MIDIHandler(Config.MIDI_PORT_NAME)
+    #midi = MIDIHandler(Config.MIDI_PORT_NAME)
+    midi = MIDIHandler("loopMIDI Port 1")
     arp_index = 0
     last_arp_time = time.time()
     current_note = None
@@ -156,11 +158,11 @@ def main():
         arp_interval = max(0.025, 0.25 - (speed / Config.MAX_SPEED) * 0.45)
         
 
-
         if not sat.frozen and len(chord_notes) > 0 and (current_time - last_arp_time) > arp_interval:
             note = chord_notes[arp_index % len(chord_notes)]
             velocity = min(127, int(40 + speed * 5))  # Velocity scales with speed
-            midi.send_note(note, velocity, duration=arp_interval * 0.8, current_time=current_time)
+            #Appregio in channel 0
+            midi.send_note(note, velocity, duration=arp_interval * 0.8, current_time=current_time, channel=0)
             current_note = note
             arp_index += 1
             last_arp_time = current_time
@@ -170,6 +172,41 @@ def main():
         # Clear current note if enough time has passed since last note
         if current_time - last_arp_time > arp_interval:
             current_note = None
+
+        #Markov model for melody
+       
+        training_data = (track_1() + track_2() + track_3() + track_4() + track_5())
+        states = list(set(training_data))
+        markov_model = MarkovChainMelodyGenerator(states)
+        markov_model.train(training_data)
+        melody_state = states[0]  # initial state
+
+        # Melody timing state
+        last_melody_time = time.time()
+        melody_interval = arp_interval 
+
+        if not sat.frozen and len(chord_notes) > 0 and (current_time - last_melody_time) > melody_interval:
+
+         # Convert planet chord to bias inputs
+            key= 72 + current_scale.root
+            root_midi = 60 + dominant_planet.chord.root
+            chord_intervals = dominant_planet.chord.intervals
+
+         # Generate next melody state
+            melody_state = markov_model._generate_next_state(melody_state, key, root_midi, chord_intervals)
+            interval, duration = melody_state
+            melody_midi = key + interval
+
+        # Keep melody above arpeggio register
+            melody_midi += 12
+            velocity = min(127, int(40 + speed * 5)) 
+
+            # Melody in channel 1
+            midi.send_note(melody_midi, velocity, duration=melody_interval * 1.1,
+               current_time=current_time, channel=1)
+            
+            last_melody_time = current_time
+
         
         # Update MIDI (turn off expired notes)
         midi.update(current_time)
