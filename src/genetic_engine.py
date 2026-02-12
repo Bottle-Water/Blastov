@@ -11,8 +11,8 @@ import math
 class GeneticSolarSystemGenerator:
     def __init__(self, system_size=5,
                  max_gens = 70,
-                 population_size=200,
-                 threshold = 0.875,
+                 population_size=150,
+                 threshold = 0.95,
                  mutation_rate=0.05,
                  injection_prop = 0.5,
                  random_immigration_prop = 0.05,
