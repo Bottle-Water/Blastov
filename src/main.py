@@ -42,12 +42,14 @@ def main():
                orbit_center=system_center, orbit_radius=210.0, angular_speed=0.4, angle=1.5),
         Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=100.0, angular_speed=0.22, angle=2),
+        Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
+               orbit_center=system_center, orbit_radius=70.0, angular_speed=0.42, angle=0.7),
     ]
     sat = Satellite(np.array([100, 100]))
 
     # Genetic algorithm and thread state
     ga_timer = 0
-    ga_rate = 2.0
+    ga_rate = 8.0
     ga_delta = 1/ga_rate
     ga_queue = Queue()
     ga_active = False
@@ -56,7 +58,7 @@ def main():
     ga_status = ''
     current_scale = ScaleData("CMajor")
     previous_scale = None
-    generator = GeneticSolarSystemGenerator()
+    generator = GeneticSolarSystemGenerator(system_size=len(planets))
 
     def run_ga(generator, current_scale):
         chrom, resolved = generator.run(current_scale)
@@ -110,7 +112,11 @@ def main():
         if ga_active and not ga_queue.empty():
             ga_result = ga_queue.get()
 
-            if generator.current_scale_steps > generator.max_gens:
+            #This should be done in a smarter way to make it smoother 
+            for i, gene in enumerate(ga_result["chromosome"].planet_genes):
+                planets[i].chord = gene.chord
+
+            if generator.current_scale_steps >= generator.max_gens:
                 ga_status = "Didn't resolve"
                 ga_active = False
             elif ga_result['resolved']:
@@ -130,7 +136,7 @@ def main():
         # Harmonic Context & MIDI Arpeggio
         # Get the dominant planet and use its chord
         dominant_planet = get_dominant_planet(sat, planets)
-        chord_notes = sorted([interval + dominant_planet.chord.root for interval in dominant_planet.chord.intervals])
+        chord_notes = sorted([interval + dominant_planet.chord.root + (Config.BASE_OCTAVE * 12) for interval in dominant_planet.chord.intervals])
         source_planet = dominant_planet
         
 
@@ -138,7 +144,7 @@ def main():
         # Arpeggio rate based on satellite speed
         speed = np.linalg.norm(sat.vel)
         # Map speed (0-15) to arp interval (0.5s - 0.05s)
-        arp_interval = max(0.05, 0.5 - (speed / Config.MAX_SPEED) * 0.45)
+        arp_interval = max(0.025, 0.25 - (speed / Config.MAX_SPEED) * 0.45)
         
 
 

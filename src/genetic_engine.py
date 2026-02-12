@@ -10,13 +10,13 @@ import math
 
 class GeneticSolarSystemGenerator:
     def __init__(self, system_size=5,
-                 max_gens = 30,
+                 max_gens = 50,
                  population_size=60,
-                 threshold = 0.825,
+                 threshold = 0.95,
                  mutation_rate=0.01,
                  injection_prop = 0.5,
                  random_immigration_prop = 0.05,
-                 subpop_size = 10):
+                 subpop_size = 20):
         
         self.system_size = system_size
         self.max_gens = max_gens
@@ -228,27 +228,7 @@ def stats():
     plt.show()
 
 def main():
-    generator = GeneticSolarSystemGenerator()
-    scales = [ScaleData("CMajor"),
-            ScaleData("GMajor"),
-            ScaleData("FMinor"),
-            ScaleData("BMajor")]
-    
-    for i in range(100):
-        current_scale = scales[(i%len(scales))]
-        print(f"Scale: {current_scale.name}")
-        resolved = False
-
-        while not resolved:
-            _, resolved = generator.run(current_scale)
-        
-        if generator.current_scale_steps == generator.max_gens:
-            print("Didn't resolve!")
-        else:
-            print(f"Resolved in {generator.current_scale_steps} gens.")
-
-
-
+    stats()
 
 
 if __name__ == "__main__":
