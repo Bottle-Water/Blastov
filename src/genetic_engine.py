@@ -10,13 +10,13 @@ import math
 
 class GeneticSolarSystemGenerator:
     def __init__(self, system_size=5,
-                 max_gens = 50,
-                 population_size=60,
-                 threshold = 0.95,
-                 mutation_rate=0.01,
+                 max_gens = 70,
+                 population_size=200,
+                 threshold = 0.875,
+                 mutation_rate=0.05,
                  injection_prop = 0.5,
                  random_immigration_prop = 0.05,
-                 subpop_size = 20):
+                 subpop_size = 40):
         
         self.system_size = system_size
         self.max_gens = max_gens
@@ -76,7 +76,7 @@ class GeneticSolarSystemGenerator:
         subpop_fitnesses = [x for x in fitnesses if x in self.subpop]
         superpop_fitnesses = list(filter(lambda a: a != queen_idx, subpop_fitnesses))
         #At the moment, we just choose the top 3 subpop as parents
-        subpop_parents = subpop_fitnesses[-2:]
+        subpop_parents = subpop_fitnesses[-int(self.subpop_size*0.1):]
         # Reproduction (Crossover + Mutation)
         for i in range(self.population_size):
             if i == queen_idx:
@@ -140,11 +140,20 @@ class GeneticSolarSystemGenerator:
     
     def _mutate(self, chrom: SolarSystemChromosome) -> SolarSystemChromosome:
         """Mutate a chromosome by randomly changing some genes"""
-
+        """ 
+        for gene in chrom.planet_genes:
+            for note in gene.chord.intervals:
+                chance = random()
+                if chance < self.mutation_rate/2:
+                    note = (note + 1) % 12
+                elif chance < self.mutation_rate:
+                    note = (note - 1) % 12
+         """
         for gene in chrom.planet_genes:
             if random() < self.mutation_rate:
-                gene.chord.root = (gene.chord.root + 1) % 12 
-        
+                gene.chord.root = (gene.chord.root + 1) % 12
+                gene.chord.update_name()
+
         return chrom
 
     def _random_immigration(self, population):

@@ -16,7 +16,7 @@ class Config:
     # Music
     MIDI_PORT_NAME: str = "HarmonicGravity_Out"
     DEFAULT_BPM: int = 120
-    BASE_OCTAVE: int = 4  # MIDI 60 (C4)
+    BASE_OCTAVE: int = 5  # MIDI 60 (C4)
     KEY: int = 0  # 0=C, 1=C#, 2=D, etc.
     
     # AI idk yet

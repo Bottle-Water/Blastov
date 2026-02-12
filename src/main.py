@@ -4,6 +4,7 @@ import torch
 import time
 from config import Config
 import threading
+import sys
 from random import randrange
 from queue import Queue
 from physics.gravity import Planet, Satellite, calculate_gravity, get_dominant_planet
@@ -11,7 +12,7 @@ from physics.orbital_mechanics import predict_path
 from gui.renderer import Renderer
 from music.midi_output import MIDIHandler
 from ai.model import HarmonicLSTM
-from music.harmony import CHORD_TYPES, ChordData, ScaleData, int_to_note
+from music.harmony import CHORD_TYPES, ChordData, ScaleData, int_to_note, note_to_int
 from genetic_engine import GeneticSolarSystemGenerator
 
 def main():
@@ -66,7 +67,7 @@ def main():
         ga_queue.put({'chromosome': chrom, 'resolved': resolved,
                       'steps': steps})
         time.sleep(0.1)
-
+    
     running = True
     while running:
         current_time = time.time()
@@ -91,10 +92,18 @@ def main():
                 sat.vel = launch_vector
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
+                keys = pygame.key.get_pressed()
+                if event.unicode in ['a','b', 'c', 'd', 'e', 'f', 'g']:
                     previous_scale = current_scale.name
-                    root = randrange(12)
-                    new_scale = int_to_note[root] + 'Major'
+                    root = event.unicode.upper()
+                    flavour = 'Major'
+                    if keys[pygame.K_UP]:
+                        root = int_to_note[(note_to_int[root]+1)%12]
+                    if keys[pygame.K_DOWN]:
+                        root = int_to_note[(note_to_int[root]-1)%12]
+                    if keys[pygame.K_LEFT]:
+                        flavour = 'Minor'
+                    new_scale = root + flavour
                     ga_key_label = f"{previous_scale}->{new_scale}"
                     current_scale = ScaleData(new_scale)
                     ga_active = True
