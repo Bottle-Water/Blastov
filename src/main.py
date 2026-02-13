@@ -14,7 +14,7 @@ from music.midi_output import MIDIHandler
 from ai.model import HarmonicLSTM
 from music.harmony import CHORD_TYPES, ChordData, ScaleData, int_to_note, note_to_int
 from genetic_engine import GeneticSolarSystemGenerator
-from markov.train_examples import track_1, track_2, track_3, track_4, track_5
+from markov.train_examples import track_1, track_2, track_3, track_4, track_5, track_6, track_7, track_8
 from markov.MarkovChainMelodyGenerator import MarkovChainMelodyGenerator 
 def main():
     pygame.init()
@@ -69,6 +69,20 @@ def main():
         ga_queue.put({'chromosome': chrom, 'resolved': resolved,
                       'steps': steps})
         time.sleep(0.1)
+    
+    #Initialize Markov model for melody
+       
+    training_data = (track_1() + track_2() + track_3() + track_4() + track_5() + track_6() + track_7() + track_8())
+    states = []
+    for s in training_data:
+        if s not in states:
+           states.append(s)
+    markov_model = MarkovChainMelodyGenerator(states)
+    markov_model.train(training_data)
+    melody_state = markov_model._generate_starting_state()  # initial state
+    last_melody_time = time.time()
+    note_duration = 0
+    last_melody_pitch = 72 + current_scale.root
     
     running = True
     while running:
@@ -155,12 +169,13 @@ def main():
         # Arpeggio rate based on satellite speed
         speed = np.linalg.norm(sat.vel)
         # Map speed (0-15) to arp interval (0.5s - 0.05s)
-        arp_interval = max(0.025, 0.25 - (speed / Config.MAX_SPEED) * 0.45)
+        #arp_interval = max(0.025, 0.25 - (speed / Config.MAX_SPEED) * 0.45)
+        arp_interval = max(0.05, 0.25 - (speed / Config.MAX_SPEED) * 0.45) * 2.5
         
 
         if not sat.frozen and len(chord_notes) > 0 and (current_time - last_arp_time) > arp_interval:
             note = chord_notes[arp_index % len(chord_notes)]
-            velocity = min(127, int(40 + speed * 5))  # Velocity scales with speed
+            velocity = min(127, int(20 + speed * 2))  # Velocity scales with speed
             #Appregio in channel 0
             midi.send_note(note, velocity, duration=arp_interval * 0.8, current_time=current_time, channel=0)
             current_note = note
@@ -173,39 +188,47 @@ def main():
         if current_time - last_arp_time > arp_interval:
             current_note = None
 
-        #Markov model for melody
-       
-        training_data = (track_1() + track_2() + track_3() + track_4() + track_5())
-        states = list(set(training_data))
-        markov_model = MarkovChainMelodyGenerator(states)
-        markov_model.train(training_data)
-        melody_state = states[0]  # initial state
-
         # Melody timing state
-        last_melody_time = time.time()
-        melody_interval = arp_interval 
+        #MARKOV MODEL----------------------
+        #scale_intervals = current_scale.intervals --> add to apply_chord_bias func --> check if (note_pc - scale_root) % 12 in scale_intervals
+        if not sat.frozen and len(chord_notes) > 0:
+            # Check if the previous note's time is up
+           if (current_time - last_melody_time) >= note_duration: #rythm timer/ waits until the time of the previous note is over
 
-        if not sat.frozen and len(chord_notes) > 0 and (current_time - last_melody_time) > melody_interval:
-
-         # Convert planet chord to bias inputs
-            key= 72 + current_scale.root
-            root_midi = 60 + dominant_planet.chord.root
-            chord_intervals = dominant_planet.chord.intervals
+         # Get current chord information
+               root_midi = 60 + dominant_planet.chord.root #rooth of the current chord
+               chord_intervals = dominant_planet.chord.intervals #intervals of the chords
+               scale_intervals = current_scale.intervals #current scale information
 
          # Generate next melody state
-            melody_state = markov_model._generate_next_state(melody_state, key, root_midi, chord_intervals)
-            interval, duration = melody_state
-            melody_midi = key + interval
-
-        # Keep melody above arpeggio register
-            melody_midi += 12
-            velocity = min(127, int(40 + speed * 5)) 
-
-            # Melody in channel 1
-            midi.send_note(melody_midi, velocity, duration=melody_interval * 1.1,
-               current_time=current_time, channel=1)
+               #melody_interval = duration 
+               # Generate next state using last played melody pitch
+               melody_state = markov_model._generate_next_state(melody_state,
+                    last_melody_pitch,      # previous note
+                    root_midi,
+                    scale_intervals,
+                    chord_intervals)
             
-            last_melody_time = current_time
+               interval, duration = melody_state
+              # Compute absolute MIDI pitch
+               melody_midi = last_melody_pitch + interval  #current pitch
+               # Keep melody between 60 and 96
+               while melody_midi < 60:
+                    melody_midi += 12
+               while melody_midi > 96:
+                    melody_midi -= 12
+            #scale duration so it fits with the appregios
+               note_duration = duration * (arp_interval * 2.0)
+
+        # Velocity (slower than arpeggio if desired)
+               velocity = min(127, int(20 + speed * 2)) 
+
+            #note_duration = min(duration * arp_interval * 2.0, 2.0) 
+            # Melody in channel 1
+               midi.send_note(melody_midi, velocity, duration=note_duration,
+                   current_time=current_time, channel=1)
+               last_melody_pitch = melody_midi #keep current pitch for the next step generation
+               last_melody_time = current_time
 
         
         # Update MIDI (turn off expired notes)
