@@ -6,8 +6,10 @@ from config import Config
 def predict_path(start_pos: np.ndarray, start_vel: np.ndarray, planets: List[Planet], steps: int = 120, dt: float = 1.0/Config.FPS) -> List[Tuple[float, float]]:
     """
     Simulates the satellite trajectory into the future.
-    steps: Number of frames to predict (120 steps = 2 seconds at 60fps)
-    dt: Time step (default 1/60 seconds)
+
+    Arguments:
+        steps: Number of frames to predict (120 steps = 2 seconds at 60fps)
+        dt: Time step (default 1/60 seconds)
     """
     path = []
     # Create temporary physics state
@@ -22,7 +24,8 @@ def predict_path(start_pos: np.ndarray, start_vel: np.ndarray, planets: List[Pla
 
     ghost = GhostSat(temp_pos, temp_vel)
 
-	# ghost planet used to predict path as planets will have moved by the time you got there
+	# We use ghost planets to simulate the future trajectory of the real planets, to predict 
+    # the future effect on the path of the sattelite
     class GhostPlanet:
         def __init__(self, p: Planet):
             self.pos = p.pos.copy()
