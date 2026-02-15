@@ -1,81 +1,56 @@
 import numpy as np
+from typing import List, Tuple
+
 
 class MarkovChainMelodyGenerator:
-    '''
-    Represents a Markov Chain model for melody generation.
-    '''
+    """
+    A Markov Chain model that generates melodies based on learned (interval, duration) states,
+    with real-time harmonic biasing for chords and scales.
+    """
 
-    def __init__(self, states):
-        '''
+    def __init__(self, states: List[Tuple[int, float]]):
+        """
         Initializes the MarkovChain with the given states.
 
-        Parameters:
+        Args:
             states (list of tuples): List of possible (pitch, duration) pairs.
-        '''
+        """
         self.states = states
         self.initial_probabilities = np.zeros(len(states))
         self.transition_matrix = np.zeros((len(states), len(states)))
         self._state_indexes = {state: i for (i, state) in enumerate(states)}
 
-    def train(self, notes):
-        '''
-        Train the model based on a list of notes.
+    def train(self, notes: List[Tuple[int, float]]) -> None:
+        """
+        Builds initial probabilities and transition matrix from a list
+        of notes.
 
-        Parameters:
-            notes (list): List of music21.note.Note objects.
-        '''
-        self._calculate_initial_probabilities(notes)
+        Args:
+            notes (list): List of (interval,duration) tuples.
+        """
+        for note in notes:
+            state = note 
+            self.initial_probabilities[self._state_indexes[state]] += 1
+
+        self._normalize_initial_probabilities()
         self._calculate_transition_matrix(notes)
     
-    def generate(self, length, start_pitch, chord_sequence):
-        '''
-        Generate a melody of a given length.
 
-        Parameters:
-            length (int): The number of notes to generate.
-            chord_sequence: current chord sequence
-        
-        Returns:
-            melody (list of tuples): A list of generated states.
-        '''
-        melody = []
-        current_pitch = start_pitch
-        state = self._generate_starting_state()
-        for i in range(length):
-            interval, duration = state
-            current_pitch += interval
-            melody.append((current_pitch, duration))
-            root_midi, chord_intervals = chord_sequence[i]
-            state = self._generate_next_state(state, current_pitch, root_midi, chord_intervals)
-        
-        return melody
-    
-    def _calculate_initial_probabilities(self, notes):
-        '''
+    def _calculate_initial_probabilities(self, notes: List[Tuple[int, float]]) -> None:
+        """
         Calculate the initial probabilities from the provided notes.
 
-        Parameters:
-            notes (list): List of music21.note.Note objects.
-        '''
+        Args:
+            notes (list): List of (interval,duration) tuples.
+        """
         for note in notes:
             self._increment_initial_probability_count(note)
         self._normalize_initial_probabilities()
     
-    def _increment_initial_probability_count(self, note):
-        '''
-        Increment hte probability count for a given note.
-
-        Parameters:
-            note (music21.note.Note): A note object.
-        '''
-        state = note  # already (interval, duration)
-       #state = (note.pitch.nameWithOctave, note.duration.quarterLength)
-        self.initial_probabilities[self._state_indexes[state]] += 1
-    
-    def _normalize_initial_probabilities(self):
-        '''
+    def _normalize_initial_probabilities(self) -> None:
+        """
         Normalize the initial probabilities array such that the sum of all probabilities equals 1.
-        '''
+        """
         total = np.sum(self.initial_probabilities)
 
         if total:
@@ -83,40 +58,36 @@ class MarkovChainMelodyGenerator:
 
         self.initial_probabilities = np.nan_to_num(self.initial_probabilities)
     
-    def _calculate_transition_matrix(self, notes):
-        '''
+    def _calculate_transition_matrix(self, notes: List[Tuple[int, float]]) -> None:
+        """
         Calculate the transition matrix from the provided notes.
 
-        Parameters:
-            notes (list): List of music21.note.Note objects.
-        '''
+        Args:
+            notes (list): List of (interval,duration) tuples.
+        """
         for i in range(len(notes) - 1):
             self._increment_transition_count(notes[i], notes[i + 1])
 
         self._normalize_transition_matrix()
     
-    def _increment_transition_count(self, current_state, next_state):
-
-        self.transition_matrix[
-        self._state_indexes[current_state],
-        self._state_indexes[next_state]
-    ] += 1
+    def _increment_transition_count(self, current_state: Tuple[int, float],
+     next_state: Tuple[int, float]) -> None:
+        """
+        Increment the transition count between the current state and the next state.
+        """
+        current_idx = self._state_indexes[current_state]
+        next_idx = self._state_indexes[next_state]
+        self.transition_matrix[current_idx, next_idx] += 1
         
     
-    def _normalize_transition_matrix(self):
-        '''
-        This method normalizes each row of the transition matrix so that the sum of probabilities in each row equals 1.
-        This is essential fo the row of the matrix to represent probability distribution of transitioning from one state to the next.
-        '''
+    def _normalize_transition_matrix(self) -> None:
+        """
+        Normalizes each row of the transition matrix so that it represents 
+        a probability distribution of transitioning to the next state.
+        """
         row_sums = self.transition_matrix.sum(axis=1)
 
-        # Use np.errstate to ignore any warnings that arise during division.
-        # This is necessary because some rows may have a sum of 0, which would result in a division by zero warning.
-        with np.errstate(divide='ignore', invalid='ignore'):
-            # Normalize each row by its sum. 
-            # np.where is used here to handle rows where the sum is zero.
-            # If the sum is zero, np.where ensures that the row remains all zeros
-            # instead of containing NaN values.             
+        with np.errstate(divide='ignore', invalid='ignore'):           
             self.transition_matrix = np.where(
                 row_sums[:, None], # Condition: Check each row's sum.
                 # True case: Normalize if sum is not zero.
@@ -124,40 +95,58 @@ class MarkovChainMelodyGenerator:
                 0, # False case: Keep as zero if sum is zero.
             )
     
-    def _generate_starting_state(self):
-        '''
+    def _generate_starting_state(self) -> Tuple[int, float]:
+        """
         Generate a starting state based on the initial probabilities.
         
         Returns:
-            A state from the list of states.
-        '''
-        initial_index = np.random.choice(
-            list(self._state_indexes.values()), p=self.initial_probabilities
-        )
-    
-        return self.states[initial_index]
-    def _apply_chord_bias(self, probs, current_pitch, root_midi, scale_intervals, chord_intervals):
+            tuple: A state (interval, duration) chosen from the list of possible
+            states. 
         """
-        chord = (root_midi, quality)
-        example: (60, "maj7")
+        initial_index = np.random.choice(
+            list(self._state_indexes.values()),
+            p=self.initial_probabilities
+        )
+        return self.states[initial_index]
+    
+    def _apply_chord_bias(self, probs: np.ndarray, current_pitch : int,
+        root_midi: int,
+        scale_intervals: List[int],
+        chord_intervals: List[int]) -> np.ndarray:
+        """
+        Applies harmonic weights to transition probabilities based on the current 
+        musical context (chord and scale).
+
+        Args:
+            probs (np.array): 1D array of base transition probabilities for the
+            current state.
+            current_pitch (int): The absolute MIDI pitch of the last played note.
+            root_midi (int): The absolute MIDI pitch of the current chord's root.
+            scale_intervals (list): Semitone offsets from the root representing the current scale.
+            chord_intervals (list): Semitone offsets from the root representing the current chord.
+
+        Returns:
+            np.array: A new 1D array of normalized probabilities adjusted for harmonic correctness.
+        
         """
         weighted = probs.copy()
-        weighted += 0.001  #epsilon
+        weighted += 0.001  #epsilon to prevent absolute zero
+
+        root_pc = root_midi % 12
+
         for i, (interval, _) in enumerate(self.states):
 
             predicted_pitch = current_pitch + interval
             note_pc = predicted_pitch % 12
-            root_pc = root_midi % 12
-
             rel = (note_pc - root_pc) % 12
 
             # Apply weights
             if rel in chord_intervals:
-               weighted[i] *= 15.0  # chord tone 
-            elif rel in scale_intervals: #example major scale
-               weighted[i] *= 2.0  # slight penalty
+               weighted[i] *= 15.0  # Chord tone bias
+            elif rel in scale_intervals: 
+               weighted[i] *= 2.0  # Scale tone bias
             else:
-                weighted[i] *= 0.05 #intense penalty for non-chords
+                weighted[i] *= 0.05 #Out-of-key penalty
 
         # Renormalize
         total = np.sum(weighted)
@@ -166,16 +155,27 @@ class MarkovChainMelodyGenerator:
 
         return weighted
 
-    def _generate_next_state(self, current_state, current_pitch, root_midi,scale_intervals, chord_intervals):
-        '''
+    def _generate_next_state(
+        self, 
+        current_state: Tuple[int, float], 
+        current_pitch: int, 
+        root_midi: int, 
+        scale_intervals: List[int], 
+        chord_intervals: List[int]
+        ) -> Tuple[int, float]:
+        """
         Generate the next state based on the transition matrix and the current state.
 
-        Parameters:
+        Args:
             current_state (tuple): The current state in the Markov Chain.
+            current_pitch (int): The absolute MIDI pitch of the last played note.
+            root_midi (int): The absolute MIDI pitch of the current chord's root.
+            scale_intervals (list): Semitone offsets representing the current scale.
+            chord_intervals (list): Semitone offsets representing the current chord.
 
         Returns:
-            A state from the Markov Chain.
-        '''
+            tuple: The next generated state (interval, duration).
+        """
         if self._does_state_have_subsequent(current_state):
 
             base_probs = self.transition_matrix[
@@ -191,15 +191,16 @@ class MarkovChainMelodyGenerator:
 
         return self._generate_starting_state() #safety return
 
-    def _does_state_have_subsequent(self, state):
-        '''
+    def _does_state_have_subsequent(self, state: Tuple[int, float]) -> bool:
+        """
         Check if a given state has a subsequent state in the transition matrix.
 
-        Parameters:
+        Args:
             state (tuple): The state to check.
 
         Returns:
             True if the state has a subsequent state, False otherwise.
-        '''
-        return self.transition_matrix[self._state_indexes[state]].sum() > 0
+        """
+        state_idx = self._state_indexes[state]
+        return self.transition_matrix[state_idx].sum() > 0
 

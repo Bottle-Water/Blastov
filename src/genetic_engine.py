@@ -1,12 +1,20 @@
+import math
+from random import randrange, choice, random
+
+from matplotlib import pyplot as plt
+import numpy as np
+
 from music.harmony import CHORD_TYPES, ChordData, ScaleData
 from ai.utils import PlanetGene, SolarSystemChromosome
 from ai.fitness import FitnessEvaluator
-from random import randrange, choice, random
-from matplotlib import pyplot as plt
-import numpy as np
-import math
+
 
 class GeneticSolarSystemGenerator:
+    """
+    A Genetic Algorithm generator that evolves a 'Solar System' (musical structure)
+    to match a target musical scale using the SORIGA algorithm.
+    """
+
     def __init__(self, number_of_planets=5,
                  max_gens = 70,
                  population_size=150,
@@ -29,7 +37,8 @@ class GeneticSolarSystemGenerator:
         for _ in range(self.population_size):
             chromosome = self.create_random_chromosome()
             self.population.append(chromosome)
-        #Initialise 0 fitness for each
+        
+        # Initialize fitness tracking (chromosome, fitness_score)
         self.population_with_fitness = [(chrom, 0) for chrom in self.population]
 
         self.fitness_evaluator = FitnessEvaluator()
@@ -53,6 +62,7 @@ class GeneticSolarSystemGenerator:
         else:
             self.current_scale_steps = 1
 
+        #Check resolution criteria
         if stats["Avg fit"] > self.threshold or self.current_scale_steps == self.max_gens:
             resolved = True
         
@@ -79,11 +89,9 @@ class GeneticSolarSystemGenerator:
         #Identify the chromosome we are following down the generations
         queen_idx = 0
         
-        #Initialise a new subpopulation if it was emptied last step. 
+        #1. Subpopulation initialization 
         if not self.subpop:
-            #Find the worst performing chromosome, and build the group with its
-            #index neighbours (these indexes are arbritrary - the selection is 
-            #essentially random).
+            #Identify the worst performing index and build a neighborhood around it
             worst_idx = np.argsort([x[1] for x in self.population_with_fitness])[0]
             start_idx = worst_idx + math.floor(-((self.subpop_size-1)/2))
             stop_idx  = worst_idx + math.floor(((self.subpop_size-1)/2))
@@ -94,49 +102,52 @@ class GeneticSolarSystemGenerator:
 
         fitnesses = np.argsort([x[1] for x in self.population_with_fitness])
 
-        #SELECTION
-        #The best 20% of the population (excluding those chosen for the subpopulation) 
-        #are chosen for the parent pool.
+        #2. Selection
+        #The best 20% of the population (excluding those chosen for the subpopulation) are chosen for the parent pool.
         superpop_fitnesses = [x for x in fitnesses if x not in self.subpop]
         superpop_fitnesses = list(filter(lambda a: a != queen_idx, superpop_fitnesses))
         parents = superpop_fitnesses[int(-0.2*self.population_size):]
 
-        #Repeat the process within the subpopulation. We only choose 10% of the subpopulation
-        #as parents to speed up growth. 
+        # Select top 10% of the subpopulation as sub-parents
         subpop_fitnesses = [x for x in fitnesses if x in self.subpop]
         subpop_fitnesses = list(filter(lambda a: a != queen_idx, subpop_fitnesses))
         subpop_parents = subpop_fitnesses[-int(self.subpop_size*0.1):]
         
-        #CROSSOVER
+        #3. Crossover
         for i in range(self.population_size):
-            #The 'queen' (our chosen chromosome) is always crossed over with a selected
+            #The queen is always crossed over with a selected
             #parent to ensure it follows the improvements in fitness. It produces one child,
             #which becomes the next queen. 
             if i == queen_idx:
                 king = self.population[choice(subpop_parents)]
                 princess = self._crossover(self.population[queen_idx], king)
                 self.population[i] = princess
+
             elif i in self.subpop and i not in subpop_parents:
+                #Internal subpopulation crossover
                 parent1 = self.population[choice(subpop_parents)]
                 parent2 = self.population[choice(subpop_parents)]
                 child = self._crossover(parent1, parent2)
                 self.population[i] = child
+
             elif i not in parents:
+                #Standard population crossover
                 parent1 = self.population[choice(parents)]
                 parent2 = self.population[choice(parents)]
                 child = self._crossover(parent1, parent2)
                 self.population[i] = child
 
 
-        #Random immigration - replace proportion with random newcomers
-        #each generation.
+        #4. Random immigration 
+        # Replace proportion with random newcomerseach generation.
         self.population = self._random_immigration(self.population)
 
-        #Evaluate fitness for all
+        #5. Fitness evaluation
         self.population_with_fitness = [(chrom, self._evaluate_fitness(chrom, current_scale)) for chrom in self.population]
         self.population = [chrom for chrom, _ in self.population_with_fitness]
         fitnesses = [x[1] for x in self.population_with_fitness]
 
+        #6. Post-step analysis
         best_fit = sorted(self.population_with_fitness, key=lambda x: x[1], reverse=True)[0][1]
         worst_idx = min(range(len(fitnesses)), key=fitnesses.__getitem__)
         #If the subpopulation no longer contains the worst chromosome, its done its job - it can 
@@ -149,8 +160,9 @@ class GeneticSolarSystemGenerator:
         return self.population[queen_idx], {"Best fit": best_fit, "Avg fit": avg_fit}
     
     def create_random_chromosome(self) -> SolarSystemChromosome:
-        planet_genes = []        
+        """Generates a new random SolarSystemChromosome."""
 
+        planet_genes = []        
         for _ in range(self.number_of_planets):
             root = randrange(12)
             chord_type = choice(CHORD_TYPES)
@@ -160,10 +172,8 @@ class GeneticSolarSystemGenerator:
         return SolarSystemChromosome(planet_genes)
 
     def _crossover(self, p1: SolarSystemChromosome, p2: SolarSystemChromosome) -> SolarSystemChromosome:
-        """
-        Crossover two parents. This is a simple single-point crossover,
-        as the chromosomes are simple and small.
-        """
+        """Performs single-point crossover between two parent chromosomes."""
+
         crossover_point = randrange(self.number_of_planets)
         p1_genes = p1.planet_genes[:crossover_point]
         p2_genes = p2.planet_genes[crossover_point:]
@@ -173,6 +183,7 @@ class GeneticSolarSystemGenerator:
 
     def _random_immigration(self, population):
         """Replace proportion of population with newcomers"""
+
         new_population = []
         for chrom in population:
             if random() < self.random_immigration_prop:
@@ -182,6 +193,8 @@ class GeneticSolarSystemGenerator:
 
     def _evaluate_fitness(self, chrom: SolarSystemChromosome,
                           current_scale: ScaleData) -> float:
+        """Calculates fitness score for a given chromosome."""
+
         return self.fitness_evaluator.evaluate(chrom, current_scale)
 
 def stats():
@@ -199,6 +212,8 @@ def stats():
               ScaleData("BMajor")]
     max_runs = 100
     stats = []
+
+
     print(f"Running model {max_runs} times through {len(scales)+1} key changes.")
 
     #Runs the model over all the scales, then gets a new model to start fresh.
@@ -228,6 +243,7 @@ def stats():
             run_stats.append(new_stats)
         stats.append(run_stats)
 
+    #Visualization
     plt.figure(1, figsize=(12, 6))
     previous_scale = None
     for i, current_scale in enumerate(scales):
@@ -235,7 +251,8 @@ def stats():
         avg_len = 0
         max_len = 0
         unresolved = 0
-
+        
+        # Plot first 4 runs as samples
         for j, entry in enumerate(scale_stats):
             if j < 4:
                 plt.subplot(len(scales), 4, ((i*4) + (j+1)))
@@ -251,8 +268,9 @@ def stats():
             if entry["Length"] > max_len: max_len = entry["Length"]
             unresolved += (entry["Resolved"] != True)
 
+        # Print Summary Stats
         avg_len /= max_runs
-
+        
         print(f"{previous_scale}->{current_scale.name}")
         print(f"Avg length: {avg_len}, max len: {max_len}.")
         print(f"{unresolved} didn't resolve in {generator.max_gens} gens.")
