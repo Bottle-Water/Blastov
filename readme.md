@@ -9,7 +9,6 @@ This project creates a "Solar system" generative music tool. It consists of a ge
 
 - **Python 3.10**
 - **pip** (Python package manager)
-- *(Optional)* **MuseScore 4** installed on Windows (for automatic score visualization).
 
 ## Installation
 
