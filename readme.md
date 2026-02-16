@@ -2,7 +2,7 @@
 
 **Final Project: Generative music tool**
 
-This project creates a "Solar system" generative music tool. It consists of a genetic algorithm creating chord progressions and a Markov chain model creating a melody on top of that, based on a Physics-based UI.
+This project creates a "Solar system" generative music tool. It consists of a genetic algorithm creating chord progressions and a Markov chain model creating a melody on top of that, with a physics-based UI.
 
 
 ## Prerequisites
@@ -15,7 +15,7 @@ This project creates a "Solar system" generative music tool. It consists of a ge
 
 1. **Clone the repository:**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/upf-smc-genai-music/final-project-generative-music-tool-zoda.git
    cd final-project-generative-music-tool-zoda
 
    ```
@@ -25,7 +25,7 @@ This project creates a "Solar system" generative music tool. It consists of a ge
 
 ## Usage
 
-Run the main script to start the evolution process:
+Run the main script to start:
 
 ```Bash
 python main.py
@@ -36,5 +36,7 @@ python main.py
 - Click and drag to aim and fire satellite.
 
 - Choose your key by pressing the corresponding key on your keyboard, e.g. press 'G' to modulate to G major. Hold the up or down key while choosing your modulation to access e.g. G# or Gb, and hold the left key to access minor keys.
+
+- Happy orbitting!
 
 
