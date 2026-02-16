@@ -19,11 +19,11 @@ class Config:
     BASE_OCTAVE: int = 5  # MIDI 60 (C4)
     KEY: int = 0  # 0=C, 1=C#, 2=D, etc.
     
-    # AI idk yet
+    # AI
     INPUT_SIZE: int = 17 # 12 (chord (12 notes)) + 3 (history) + 1 (planet) + 1 (velocity)
     HIDDEN_SIZE: int = 32
     SEQ_LEN: int = 3
-    OUTPUT_SIZE: int = 25 # Intervals -12 to +12 (polyphonic?!)
+    OUTPUT_SIZE: int = 25 # Intervals -12 to +12 
     LEARNING_RATE: float = 0.001
     EPOCHS: int = 20
     
