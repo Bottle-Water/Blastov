@@ -41,11 +41,9 @@ python main.py
 
 
 
-open a daw and add a VST instrument to a track and select HarmonicGravity_Out as midi input on a track
-(recommended pluck-y sound with no sustain for arp demo, with big reverb effect) 
-
-
-click and drag to aim and fire satellite
+* Open a DAW session that contains two tracks with VSTs on. Select HarmonicGravity_Out as your MIDI input, with each channel (1/2) routed to a different track.
+* Click and drag to aim and fire satellite.
+* Choose your key by pressing the corresponding key on your keyboard, e.g. press 'G' to modulate to G major. Hold the up or down key while choosing your modulation to access e.g. G# or Gb, and hold the left key to access minor keys. 
 
 
 
