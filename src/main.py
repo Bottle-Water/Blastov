@@ -219,7 +219,7 @@ def main():
         #5. Markov Melody Logic (Channel 1)
         if not sat.frozen and len(chord_notes) > 0:
             # Check if the previous note's time is up
-           if (current_time - last_melody_time) >= note_duration: #rythm timer/ waits until the time of the previous note is over
+           if (current_time - last_melody_time) >= note_duration: #rhythm timer/ waits until the time of the previous note is over
 
                # Prepare data for Markov state generation
                root_midi = 60 + dominant_planet.chord.root #rooth of the current chord

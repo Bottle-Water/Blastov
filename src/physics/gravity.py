@@ -63,7 +63,7 @@ class Satellite:
                 self.history.pop(0)
 
     def freeze(self):
-        """Hold the sattelite still while new trajectory being defined."""
+        """Hold the satellite still while new trajectory being defined."""
         self.vel = np.zeros(2, dtype=float)
         self.acc = np.zeros(2, dtype=float)
         self.frozen = True
