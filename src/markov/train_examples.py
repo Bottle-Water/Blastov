@@ -1,120 +1,15 @@
-""" from music21 import note as Note
+"""
+Melodic Training Data for Markov Chain Generation.
 
+This module contains a collection of 'tracks' used to train the MarkovChainMelodyGenerator.
+Each track is represented as a list of tuples following the format:
+    (interval, duration)
 
-def track_5():
-    
-    Returns:
-        list: List of music21.note.Note objects.
-    
-    return [
-        Note.Note("A4", quarterLength=1.5),
-        Note.Note("G4", quarterLength=0.5),
-        Note.Note("E4", quarterLength=1),
-        Note.Note("A4", quarterLength=1),
-        Note.Note("C5", quarterLength=1.5),
-        Note.Note("B4", quarterLength=0.5),
-        Note.Note("A4", quarterLength=1),
-        Note.Note("G4", quarterLength=1),
-        
-        Note.Note("F4", quarterLength=1),
-        Note.Note("E4", quarterLength=1),
-        Note.Note("G4", quarterLength=1),
-        Note.Note("A4", quarterLength=2),
-        
-        Note.Note("C5", quarterLength=1),
-        Note.Note("B4", quarterLength=1),
-        Note.Note("A4", quarterLength=1),
-        Note.Note("G4", quarterLength=2),
+Definitions:
+    - Interval (int): The relative jump from the previous note in semitones 
+    - Duration (float): The length of the note in beats 
+"""
 
-        Note.Note("E4", quarterLength=1.5),
-        Note.Note("F4", quarterLength=0.5),
-        Note.Note("G4", quarterLength=1),
-        Note.Note("A4", quarterLength=1.5),
-        Note.Note("G4", quarterLength=0.5),
-        Note.Note("E4", quarterLength=2),
-    ]
-
-
-def track_1():
-    '''
-    Creates a list of sample training notes for the melody of "Mary Had a Little Lamb".
-
-    Returns:
-        list: List of music21.note.Note objects.
-    
-    '''
-    return [
-        Note.Note("E4", quarterLength=1),
-        Note.Note("D4", quarterLength=1),
-        Note.Note("C4", quarterLength=1),
-        Note.Note("D4", quarterLength=1),
-        Note.Note("E4", quarterLength=1),
-        Note.Note("E4", quarterLength=1),
-        Note.Note("E4", quarterLength=2),
-
-        Note.Note("D4", quarterLength=1),
-        Note.Note("D4", quarterLength=1),
-        Note.Note("D4", quarterLength=2),
-        Note.Note("E4", quarterLength=1),
-        Note.Note("G4", quarterLength=1),
-        Note.Note("G4", quarterLength=2),
-        
-        Note.Note("E4", quarterLength=1),
-        Note.Note("D4", quarterLength=1),
-        Note.Note("C4", quarterLength=1),
-        Note.Note("D4", quarterLength=1),
-        Note.Note("E4", quarterLength=1),
-        Note.Note("E4", quarterLength=1),
-        Note.Note("E4", quarterLength=1),
-        
-    ]
-
-def track_2():
-    Melody 2: slow, flowing, minor-key inspired.
-    return [
-        Note.Note("D4", quarterLength=1.5),
-        Note.Note("C4", quarterLength=0.5),
-        Note.Note("A3", quarterLength=1),
-        Note.Note("D4", quarterLength=1),
-        Note.Note("F4", quarterLength=1.5),
-        Note.Note("E4", quarterLength=0.5),
-        Note.Note("D4", quarterLength=1),
-        Note.Note("C4", quarterLength=1),
-
-        Note.Note("B3", quarterLength=1),
-        Note.Note("A3", quarterLength=1),
-        Note.Note("C4", quarterLength=1),
-        Note.Note("D4", quarterLength=2),
-    ]
-
-def track_3():
-Melody 3: melancholic with slight upward movement.
-    return [
-        Note.Note("E4", quarterLength=1),
-        Note.Note("G4", quarterLength=1),
-        Note.Note("F4", quarterLength=1),
-        Note.Note("E4", quarterLength=1.5),
-        Note.Note("D4", quarterLength=0.5),
-        Note.Note("C4", quarterLength=1),
-        Note.Note("E4", quarterLength=1),
-        Note.Note("G4", quarterLength=1.5),
-        Note.Note("F4", quarterLength=0.5),
-        Note.Note("D4", quarterLength=2),
-    ]
-
-def track_4():
-    Melody 4: descending minor line, simple and sad.
-    return [
-        Note.Note("A4", quarterLength=1),
-        Note.Note("G4", quarterLength=1),
-        Note.Note("F4", quarterLength=1),
-        Note.Note("E4", quarterLength=1.5),
-        Note.Note("D4", quarterLength=0.5),
-        Note.Note("C4", quarterLength=1),
-        Note.Note("B3", quarterLength=1),
-        Note.Note("A3", quarterLength=2),
-    ]
- """
 def track_5():
     return [
         (-2, 0.5),
@@ -208,9 +103,9 @@ def track_4():
 
 def track_6():
     return [
-        (0, 1), (+7, 0.5), (-2, 0.5), (-5, 1),  # Octave/Fifth jumps
+        (0, 1), (+7, 0.5), (-2, 0.5), (-5, 1), 
         (0, 1), (+5, 1), (-1, 0.5), (-4, 1.5),
-        (+12, 1), (-7, 1), (-5, 2)              # Big octave drop
+        (+12, 1), (-7, 1), (-5, 2)              
     ]
 
 def track_7():

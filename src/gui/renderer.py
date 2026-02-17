@@ -6,10 +6,12 @@ import numpy as np
 
 class Renderer:
     def __init__(self, screen: pygame.Surface):
+        """Initializes the renderer with a pygame surface and default font."""
         self.screen = screen
         self.font = pygame.font.SysFont("Arial", 18)
 
-    def draw_world(self, sat: Satellite, planets: List[Planet]):
+    def draw_world(self, sat: Satellite, planets: List[Planet]) -> None:
+        """Renders the space background, planets, orbits, and the satellite."""
         self.screen.fill((10, 10, 25)) # Deep space blue
 
         # Draw Trail

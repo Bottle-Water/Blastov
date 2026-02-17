@@ -6,6 +6,9 @@ from music.harmony import ChordData
 
 @dataclass
 class Planet:
+    """
+    Represents a celestial body with gravitational mass and orbital properties.
+    """
     pos: np.ndarray  # [x, y]
     mass: float
     chord: ChordData
@@ -16,7 +19,7 @@ class Planet:
     angular_speed: float = 0.0  # radians / second
     angle: float = 0.0
 
-    def update(self, dt: float = 1.0 / Config.FPS):
+    def update(self, dt: float = 1.0 / Config.FPS) -> None:
         """
         Advance planet along circular orbit if parameters are set.
         
@@ -42,10 +45,10 @@ class Satellite:
         self.history: List[np.ndarray] = []
         self.frozen = True
 
-    def apply_force(self, force: np.ndarray):
+    def apply_force(self, force: np.ndarray) -> None:
         self.acc += force
 
-    def update(self):
+    def update(self) -> None:
         if not self.frozen:
             self.vel += self.acc
             # Limit speed
@@ -62,8 +65,8 @@ class Satellite:
             if len(self.history) > 50:
                 self.history.pop(0)
 
-    def freeze(self):
-        """Hold the satellite still while new trajectory being defined."""
+    def freeze(self) -> None:
+        """Hold the sattelite still while new trajectory being defined."""
         self.vel = np.zeros(2, dtype=float)
         self.acc = np.zeros(2, dtype=float)
         self.frozen = True
