@@ -85,6 +85,8 @@ def main():
     last_arp_time = time.time()
     current_note = None
     source_planet = None
+    # Tempo (BPM) - arpeggio will be tempo-synced; speed will control subdivisions
+    tempo_bpm = Config.DEFAULT_BPM
 
     # Solar system initialization
     system_center = np.array([Config.WINDOW_WIDTH // 2, Config.WINDOW_HEIGHT // 2])
@@ -246,9 +248,17 @@ def main():
         chord_notes = sorted([interval + dominant_planet.chord.root + (Config.BASE_OCTAVE * 12) for interval in dominant_planet.chord.intervals])
         source_planet = dominant_planet
 
-        # Arpeggio rate based on satellite speed
+        # Arpeggio rate based on satellite speed and global tempo
         speed = np.linalg.norm(sat.vel)
-        arp_interval = max(0.05, 0.25 - (speed / Config.MAX_SPEED) * 0.45) * 2.5
+        # Seconds per quarter note (beat)
+        beat_duration = 60.0 / float(tempo_bpm)
+
+        # Map speed -> subdivision multiplier (1..max_subdivisions)
+        max_subdivisions = 8.0
+        subdivision_factor = 1.0 + (speed / Config.MAX_SPEED) * (max_subdivisions - 1.0)
+
+        # Arpeggio interval is a subdivision of the beat (tempo synced)
+        arp_interval = max(0.02, beat_duration / subdivision_factor)
         
         #Trigger Arpeggio (Channel 0) 
         if not sat.frozen and len(chord_notes) > 0 and (current_time - last_arp_time) > arp_interval:
