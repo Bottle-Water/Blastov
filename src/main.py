@@ -27,16 +27,17 @@ def initialize_planets(system_center: np.ndarray) -> List["Planet"]:
     Returns:
         A list of Planet objects.
     """
+    # Use E major 7 (root=E -> 4) for all initial planet chords
     return [
-        Planet(pos=np.array([400, 360]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
+        Planet(pos=np.array([400, 360]), mass=10, chord=ChordData(4, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=130.0, angular_speed=0.18, angle=3.14),
-        Planet(pos=np.array([880, 360]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
+        Planet(pos=np.array([880, 360]), mass=10, chord=ChordData(4, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=240.0, angular_speed=-0.12, angle=0.0),
-        Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
+        Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(4, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=210.0, angular_speed=0.4, angle=1.5),
-        Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
+        Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(4, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=100.0, angular_speed=0.22, angle=2),
-        Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(0, CHORD_TYPES[0]),
+        Planet(pos=np.array([640, 150]), mass=10, chord=ChordData(4, CHORD_TYPES[0]),
                orbit_center=system_center, orbit_radius=70.0, angular_speed=0.42, angle=0.7),
     ]
 
@@ -158,6 +159,53 @@ def main():
                     current_scale = ScaleData(new_scale)
                     ga_active = True
 
+                ## Direction keys for manual control
+                if keys[pygame.K_LEFT]:
+                    sat.apply_force(np.array([-0.5, 0]))
+                    sat.show_booster = True
+                if keys[pygame.K_RIGHT]:
+                    sat.apply_force(np.array([0.5, 0]))
+                    sat.show_booster = True
+                if keys[pygame.K_UP]:
+                    sat.apply_force(np.array([0, -0.5]))
+                    sat.show_booster = True
+                if keys[pygame.K_DOWN]:
+                    sat.apply_force(np.array([0, 0.5]))
+                    sat.show_booster = True
+
+
+        ### Held keys check
+        keys = pygame.key.get_pressed()
+        ## Direction keys for manual control
+        sat.show_booster = False
+
+        rocket_angle = np.arctan2(sat.vel[1], sat.vel[0]) if np.linalg.norm(sat.vel) > 0 else 0
+        if keys[pygame.K_SPACE]:
+            if keys[pygame.K_LEFT]:
+                rocket_angle -= np.radians(90)
+                sat.thrust_angle = -np.radians(30)
+            elif keys[pygame.K_RIGHT]:
+                rocket_angle += np.radians(90)
+                sat.thrust_angle = np.radians(30)
+            else:
+                sat.thrust_angle = 0.0
+
+            # Project into worldspace
+            force_direction = np.array([np.cos(rocket_angle), np.sin(rocket_angle)])
+            sat.apply_force(force_direction * 0.5)
+            sat.show_booster = True
+
+        # Reverse thrust with down key
+        if keys[pygame.K_DOWN]:
+            rocket_angle += np.radians(180)
+            sat.thrust_angle = 0.0
+            force_direction = np.array([np.cos(rocket_angle), np.sin(rocket_angle)])
+
+            sat.apply_force(force_direction * 0.3)
+            sat.show_booster = True
+            
+
+
         #2. Genetic Algorithm Management
         if ga_active and ga_timer >= ga_delta:
             ga_thread = threading.Thread(
@@ -183,7 +231,7 @@ def main():
                 ga_status = 'Resolved'
                 ga_active = False
             else:
-                ga_status = f"{ga_result["steps"]} steps"
+                ga_status = f"{ga_result['steps']} steps"
        
         #3. Physics updates
         for p in planets:

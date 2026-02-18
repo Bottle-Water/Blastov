@@ -9,6 +9,7 @@ class Renderer:
         """Initializes the renderer with a pygame surface and default font."""
         self.screen = screen
         self.font = pygame.font.SysFont("Arial", 18)
+        self.sat_angle = 0
 
     def draw_world(self, sat: Satellite, planets: List[Planet]) -> None:
         """Renders the space background, planets, orbits, and the satellite."""
@@ -24,7 +25,7 @@ class Renderer:
             if getattr(p, "orbit_center", None) is not None and getattr(p, "orbit_radius", 0) > 1:
                 pygame.draw.circle(self.screen, (40, 40, 60), p.orbit_center.astype(int), int(p.orbit_radius), 1)
 
-            color = (200, 100, 100) 
+            color = p.color
             pygame.draw.circle(self.screen, color, p.pos.astype(int), int(p.radius))
             # Label
             label = self.font.render(p.chord.name, True, (255, 255, 255))
@@ -32,13 +33,13 @@ class Renderer:
 
         # Draw Satellite as triangle pointing in velocity direction
         size = 12
-        if np.linalg.norm(sat.vel) > 0.1:
+        if np.linalg.norm(sat.vel) > 0.5:
             # Calculate angle from velocity
             angle = np.arctan2(sat.vel[1], sat.vel[0])
-        else:
-            # Default pointing right if stationary
-            angle = 0
+            self.sat_angle = angle
+
         
+
         # Define triangle points (isosceles triangle pointing right initially)
         # Tip at (size, 0), base corners at (-size/2, size/2) and (-size/2, -size/2)
         triangle = np.array([
@@ -48,14 +49,34 @@ class Renderer:
         ])
         
         # Rotation matrix
-        cos_a = np.cos(angle)
-        sin_a = np.sin(angle)
+        cos_a = np.cos(self.sat_angle)
+        sin_a = np.sin(self.sat_angle)
         rotation = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
         
         # Rotate and translate to satellite position
         rotated = triangle @ rotation.T + sat.pos
         
         pygame.draw.polygon(self.screen, (255, 255, 255), rotated.astype(int))
+
+        ## If booster is active, draw a flame
+        if sat.show_booster:
+            flame_length = 10
+            flame_width = 5
+            # Flame points (pointing left from the back of the triangle)
+            flame = np.array([
+                [-size/2 - flame_length, 0],  # tip of the flame
+                [-size/2, flame_width/2],     # top of the base
+                [-size/2, -flame_width/2]     # bottom of the base
+            ])
+
+            # rotate thrust based on thrust angle 
+            angle = sat.thrust_angle
+            cos_a = np.cos(angle)
+            sin_a = np.sin(angle)
+            rotation_local = np.array([[cos_a, sin_a], [sin_a, -cos_a]])
+            flame = flame @ rotation_local.T
+            rotated_flame = flame @ rotation.T + sat.pos
+            pygame.draw.polygon(self.screen, (255, 100, 0), rotated_flame.astype(int))
 
     
 
@@ -68,6 +89,7 @@ class Renderer:
                  source_planet: Planet = None, speed: float = 0.0, ga_key_label: str = '', 
                  ga_status: str = ''):
         """Draws HUD with MIDI output info and planet distances."""
+
         y_offset = 10
         line_height = 25
         

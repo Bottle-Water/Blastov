@@ -18,6 +18,11 @@ class Planet:
     orbit_radius: float = 0.0
     angular_speed: float = 0.0  # radians / second
     angle: float = 0.0
+    color: tuple = (200, 100, 100)  # r, g, b
+
+
+
+
 
     def update(self, dt: float = 1.0 / Config.FPS) -> None:
         """
@@ -26,6 +31,19 @@ class Planet:
         Arguments:
             dt (float): Time step (default 1/60 seconds)
         """
+
+
+        quality = self.chord.flavour.lower() if self.chord.flavour else "other"
+        if quality == "maj" or quality == "maj7" or quality == "7" or quality == "maj9" or quality == "maj7#11":
+            self.color = (200, 100, 100)  # Red-ish for major
+        elif quality == "min" or quality == "minmaj7" or quality == "min7" or quality == "min7add4":
+            self.color = (100, 100, 200)  # Blue-ish for minor
+        elif quality == "dim" or quality == "dim7":
+            self.color = (150, 150, 150)  # Gray for diminished
+        else:
+            self.color = (200, 200, 100)  # Yellow-ish for others
+
+
         if self.orbit_center is None or self.orbit_radius == 0.0 or self.angular_speed == 0.0:
             return
         self.angle += self.angular_speed * dt
@@ -44,6 +62,8 @@ class Satellite:
         self.acc = np.zeros(2, dtype=float)
         self.history: List[np.ndarray] = []
         self.frozen = True
+        self.show_booster = False
+        self.thrust_angle = 0.0
 
     def apply_force(self, force: np.ndarray) -> None:
         self.acc += force
